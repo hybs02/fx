@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX シグナル判定</title>
+<style>
+  :root{
+    --bg:#0f1420; --card:#1a2233; --line:#2a3550;
+    --buy:#23c483; --sell:#ff5d6c; --neu:#8896b3;
+    --text:#e8edf7; --sub:#9aa7c2; --accent:#ffcf4a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;
+    padding:14px; max-width:520px; margin:0 auto;}
+  h1{font-size:19px; margin:4px 0 2px; text-align:center;}
+  .sub{font-size:11px; color:var(--sub); text-align:center; margin-bottom:12px;}
+  .pairs{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px;}
+  .pairs button{padding:9px 0; border:1px solid var(--line); background:var(--card);
+    color:var(--text); border-radius:10px; font-size:13px; font-weight:600;}
+  .pairs button.on{background:var(--accent); color:#1a1300; border-color:var(--accent);}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:14px; margin-bottom:12px;}
+  .price{font-size:30px; font-weight:700; text-align:center;}
+  .pair-name{text-align:center; color:var(--sub); font-size:13px; margin-bottom:2px;}
+  .verdict{text-align:center; padding:14px; border-radius:14px; margin-bottom:12px;}
+  .verdict .label{font-size:24px; font-weight:800;}
+  .verdict .stars{font-size:22px; letter-spacing:2px;}
+  .verdict .score{font-size:12px; opacity:.85; margin-top:4px;}
+  .v-buy{background:rgba(35,196,131,.15); border:1px solid var(--buy); color:var(--buy);}
+  .v-sell{background:rgba(255,93,108,.15); border:1px solid var(--sell); color:var(--sell);}
+  .v-neu{background:rgba(136,150,179,.15); border:1px solid var(--neu); color:var(--neu);}
+  .tf-title{font-size:13px; font-weight:700; color:var(--accent); margin:2px 0 6px;
+    display:flex; justify-content:space-between; align-items:center;}
+  .tf-title .sc{font-size:11px; color:var(--sub); font-weight:600;}
+  .row{display:flex; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); font-size:14px;}
+  .row:last-child{border-bottom:none;}
+  .tag{flex:0 0 44px; font-weight:700; font-size:11px; text-align:center;
+    padding:3px 0; border-radius:7px; margin-right:9px;}
+  .t-buy{background:rgba(35,196,131,.2); color:var(--buy);}
+  .t-sell{background:rgba(255,93,108,.2); color:var(--sell);}
+  .t-neu{background:rgba(136,150,179,.2); color:var(--neu);}
+  .row .name{flex:0 0 92px; color:var(--sub); font-size:11.5px;}
+  .row .msg{flex:1; font-size:12px;}
+  canvas{width:100%; height:150px; display:block;}
+  .hint{font-size:12px; color:var(--sub); line-height:1.7;}
+  .hint b{color:var(--accent);}
+  .foot{font-size:10.5px; color:var(--sub); text-align:center; margin-top:8px; line-height:1.6;}
+  .loading{text-align:center; padding:30px; color:var(--sub);}
+  .err{color:var(--sell); text-align:center; padding:16px; font-size:13px;}
+  .reload{width:100%; padding:12px; border:none; border-radius:12px; background:var(--accent);
+    color:#1a1300; font-weight:700; font-size:15px; margin-bottom:12px;}
+  .keybox{display:flex; gap:6px; margin-bottom:10px;}
+  .keybox input{flex:1; padding:9px; border-radius:10px; border:1px solid var(--line);
+    background:#0c111c; color:var(--text); font-size:13px;}
+  .keybox button{padding:9px 14px; border:none; border-radius:10px; background:var(--line);
+    color:var(--text); font-weight:700; font-size:13px;}
+  .keybox select{padding:9px; border-radius:10px; border:1px solid var(--line);
+    background:#0c111c; color:var(--text); font-size:13px; font-weight:700;}
+  .lotbox{margin-top:8px; background:#0c111c; border:1px solid var(--line);
+    border-radius:10px; padding:8px 10px; font-size:12px; line-height:1.6;}
+  .lotbox b{color:var(--accent);}
+  .banner{background:rgba(255,207,74,.12); border:1px solid var(--accent); color:var(--accent);
+    border-radius:12px; padding:10px 12px; font-size:12px; line-height:1.6; margin-bottom:12px;}
+  .banner a{color:var(--accent); font-weight:700;}
+  details{margin-bottom:12px; font-size:12px; color:var(--sub);}
+  summary{cursor:pointer; color:var(--accent); font-weight:700; padding:6px 0;}
+  details ol{margin:6px 0; padding-left:20px; line-height:1.8;}
+  .warn{background:rgba(255,93,108,.14); border:1px solid var(--sell); color:#ffb3ba;
+    border-radius:12px; padding:10px 12px; font-size:12px; line-height:1.6; margin-bottom:12px; font-weight:600;}
+  .plan-line{font-size:12.5px; padding:7px 0; border-bottom:1px solid var(--line); line-height:1.6;}
+  .plan-line:last-child{border-bottom:none;}
+  .plan-line .nm{color:var(--accent); font-weight:700;}
+  .gate-ok{color:var(--buy); font-weight:700;}
+  .gate-no{color:var(--sell); font-weight:700;}
+  .fnote{font-size:11px; color:var(--sub); line-height:1.6; margin-top:4px;}
+  .howto{margin-top:10px; background:#0c111c; border:1px solid var(--line); border-radius:10px; padding:10px 12px;}
+  .howto-t{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:6px;}
+  .howto-s{font-size:12px; line-height:1.7; margin:2px 0;}
+  .howto-tp{font-size:12px; line-height:1.6; margin:4px 0; padding:6px 8px; border-radius:8px;
+    background:rgba(35,196,131,.14); color:#8ff0c6;}
+  .howto-sl{font-size:12px; line-height:1.6; margin:4px 0; padding:6px 8px; border-radius:8px;
+    background:rgba(255,93,108,.14); color:#ffb3ba; font-weight:600;}
+  .glo{margin:0 0 12px; font-size:12px;}
+  .glo summary{font-size:13px;}
+  .glo dl{margin:8px 0 0; line-height:1.5;}
+  .glo dt{color:var(--accent); font-weight:700; margin-top:8px; font-size:12.5px;}
+  .glo dd{margin:2px 0 0; color:var(--text); font-size:12px;}
+  .glo dd .ex{color:var(--sub);}
+</style>
+</head>
+<body>
+  <h1>FX シグナル判定</h1>
+  <div class="sub">日足 ＋ 8時間足 ＋ 4時間足 のマルチタイムフレーム判定</div>
+
+  <div class="keybox">
+    <input id="key" type="text" placeholder="Twelve Data の無料APIキーを貼り付け" autocomplete="off">
+    <button id="saveKey">保存</button>
+  </div>
+  <details>
+    <summary>無料APIキーの取り方（2分・8h/4hに必要）</summary>
+    <ol>
+      <li><a href="https://twelvedata.com/register" target="_blank">twelvedata.com/register</a> でメール登録（無料）</li>
+      <li>ログイン後の画面に出る「API Key」をコピー</li>
+      <li>上の欄に貼って「保存」を押す（次回から自動で記憶）</li>
+    </ol>
+    ※無料枠は1日800回・1分8回まで。個人利用なら十分です。<br>
+    ※キーはこの端末のブラウザ内だけに保存され、外部には送られません。
+  </details>
+
+  <div class="keybox">
+    <input id="bal" type="text" inputmode="numeric" placeholder="資金(円) 例: 500000" autocomplete="off">
+    <select id="risk">
+      <option value="1">リスク1%</option>
+      <option value="2" selected>リスク2%</option>
+      <option value="3">リスク3%</option>
+      <option value="5">リスク5%</option>
+    </select>
+  </div>
+  <div class="sub" style="margin:-6px 0 10px;">↑資金を入れると、損失が資金の指定%になる<b style="color:var(--accent)">推奨ロット</b>を自動計算します</div>
+
+  <div class="pairs" id="pairs"></div>
+  <button class="reload" id="reload">↻ 更新する</button>
+
+  <div id="out"><div class="loading">通貨ペアを選んでください</div></div>
+
+  <div class="card"><div class="hint" id="hint"></div></div>
+
+  <details class="glo">
+    <summary>📖 用語の意味（タップで開く）</summary>
+    <dl>
+      <dt>移動平均線(MA)</dt><dd>過去◯日の平均価格を線にしたもの。トレンドの向きが分かる。<span class="ex">価格が線の上＝上昇基調。</span></dd>
+      <dt>25MA</dt><dd>25日間の平均線。DMMチャートの標準線で、中期トレンドの基準。<span class="ex">価格が25MAの上なら買い目線。</span></dd>
+      <dt>ゴールデンクロス</dt><dd>短期線(5)が長期線(25)を<b>下から上へ</b>抜くこと。<span class="ex">上昇のサイン（買い）。</span></dd>
+      <dt>デッドクロス</dt><dd>短期線が長期線を<b>上から下へ</b>抜くこと。<span class="ex">下落のサイン（売り）。</span></dd>
+      <dt>RSI</dt><dd>買われすぎ／売られすぎを0〜100で表す。<span class="ex">70以上＝買われすぎ(下落注意)、30以下＝売られすぎ(反発期待)、50が中立。</span></dd>
+      <dt>MACD</dt><dd>2本の平均線の差から「勢い・転換」を見る指標。<span class="ex">MACD線がシグナル線を上抜け＝買い、下抜け＝売り。</span></dd>
+      <dt>シグナル(線)</dt><dd>MACDをさらにならした線。MACD線と比べる<b>基準の線</b>。<span class="ex">この線との交差で判断する。</span></dd>
+      <dt>ボリンジャーバンド（バンド）</dt><dd>価格の振れ幅から引く「上限・中央・下限」の<b>帯（＝バンド）</b>。価格はだいたいこの帯の中で動く。<span class="ex">下限タッチ＝下がりすぎ(反発期待)、上限タッチ＝上がりすぎ(反落注意)。</span></dd>
+      <dt>ATR</dt><dd>1日にだいたい何pips動くかの平均（変動幅）。<span class="ex">損切り・利確の幅を決めるのに使う。</span></dd>
+      <dt>pips（ピップス）</dt><dd>為替の最小の値動き単位。円ペアは0.01円＝1pip。<span class="ex">100pips＝1円ぶん。</span></dd>
+      <dt>期待値</dt><dd>1回の取引の平均損益。<span class="ex">プラスなら続けるほど有利。マイナスは負け越し。</span></dd>
+      <dt>PF（プロフィットファクター）</dt><dd>総利益÷総損失。<span class="ex">1超で勝ち越し。1.3以上が合格基準。</span></dd>
+      <dt>利確（指値）</dt><dd>利益を確定させる決済。狙った値に届いたら自動で売買を閉じる注文。</dd>
+      <dt>損切り（逆指値・ストップ）</dt><dd>損失を限定する決済。逆方向に動いたら自動で閉じる注文。<b>必ず置く。</b></dd>
+      <dt>OCO注文</dt><dd>利確(指値)と損切り(逆指値)を<b>同時に置く</b>注文方法。<span class="ex">どちらかに届いたら自動決済。画面を見続けなくてよい。</span></dd>
+    </dl>
+  </details>
+
+  <div class="foot">
+    データ: Twelve Data（キー入力時・8h/4h対応）／ ECB日次（キー無し時・日足のみ）。<br>
+    ※このサインは参考です。必ず損切りを置き、1回の損失は資金の2%までに。最終判断は自己責任で。
+  </div>
+
+<script>
+// ===== 対応ペア =====
+const PAIRS = [
+  ["USD","JPY"],["EUR","JPY"],["GBP","JPY"],["AUD","JPY"],
+  ["NZD","JPY"],["CAD","JPY"],["CHF","JPY"],["EUR","USD"],
+  ["GBP","USD"],["AUD","USD"],["EUR","GBP"]
+];
+let current = ["USD","JPY"];
+let apiKey = localStorage.getItem("td_key") || "";
+let balance = parseFloat(localStorage.getItem("fx_bal")) || 0;   // 資金(円)
+let riskPct = parseFloat(localStorage.getItem("fx_risk")) || 2;  // 1回のリスク%
+const WIN_GATE = 60;   // 「合格」とみなす過去勝率の基準(%)
+const PF_GATE = 1.3;   // 損益バランス(プロフィットファクター)の合格ライン
+
+// 資金管理：1Lot=1万通貨あたり1pipで動く円（XXX/JPYは100円、XXX/USDは概算150円）
+function yenPerPip(symbol){
+  if(symbol.endsWith("JPY")) return {v:100, exact:true};
+  if(symbol.endsWith("USD")) return {v:150, exact:false};  // USDJPY≒150の概算
+  return {v:100, exact:false};
+}
+// 損失が資金のrisk%になる推奨ロット(万通貨)
+function calcLot(symbol, slPips){
+  if(!(balance>0) || !(slPips>0)) return null;
+  const yp=yenPerPip(symbol), riskYen=balance*riskPct/100;
+  return {lots:riskYen/(slPips*yp.v), vpp:yp.v, exact:yp.exact, riskYen};
+}
+
+// ===== 指標（純JS・PC版と同じロジック） =====
+function sma(a,n){ if(a.length<n) return null; let s=0; for(let i=a.length-n;i<a.length;i++)s+=a[i]; return s/n; }
+function emaSeries(a,n){
+  if(a.length<n) return [];
+  const k=2/(n+1); let s=0; for(let i=0;i<n;i++)s+=a[i];
+  const out=[s/n];
+  for(let i=n;i<a.length;i++) out.push(a[i]*k+out[out.length-1]*(1-k));
+  return out;
+}
+function rsi(a,n=14){
+  if(a.length<n+1) return null;
+  let g=[],l=[];
+  for(let i=1;i<a.length;i++){const d=a[i]-a[i-1]; g.push(Math.max(d,0)); l.push(Math.max(-d,0));}
+  let ag=0,al=0; for(let i=0;i<n;i++){ag+=g[i];al+=l[i];} ag/=n; al/=n;
+  for(let i=n;i<g.length;i++){ag=(ag*(n-1)+g[i])/n; al=(al*(n-1)+l[i])/n;}
+  if(al===0) return 100;
+  return 100-100/(1+ag/al);
+}
+function macd(a,f=12,s=26,sig=9){
+  if(a.length<s+sig) return null;
+  let ef=emaSeries(a,f), es=emaSeries(a,s);
+  ef=ef.slice(ef.length-es.length);
+  const ml=ef.map((v,i)=>v-es[i]);
+  const sl=emaSeries(ml,sig);
+  if(!sl.length) return null;
+  return {m:ml[ml.length-1], s:sl[sl.length-1]};
+}
+function bollinger(a,n=20,k=2){
+  if(a.length<n) return null;
+  const w=a.slice(a.length-n); const mid=w.reduce((x,y)=>x+y,0)/n;
+  const sd=Math.sqrt(w.reduce((x,y)=>x+(y-mid)**2,0)/n);
+  return {low:mid-k*sd, mid, up:mid+k*sd};
+}
+// 終値を step 本ごとに束ねて上位足を作る（末尾起点で最新足を必ず含む）
+function resample(closes, step){
+  if(closes.length<step) return closes.slice();
+  const start=(closes.length-1)%step; const out=[];
+  for(let i=start;i<closes.length;i+=step) out.push(closes[i]);
+  return out;
+}
+
+// ===== スコアリング（PC版と同一・過去5年検証ベースの重み） =====
+// RSI極値=±3, ボリンジャー=±2（逆張り系が利益源）／ MACD=±1, MAクロス=±1（控えめ）
+// 25MA位置は単体で優位性なし → 参考表示のみ（スコア加算しない）
+const ENTRY_GATE = 3;   // 日足スコアがこの値以上で方向を確定（=検証したエントリー条件）
+function analyze(closes, price){
+  let score=0; const lines=[];
+  const s5=sma(closes,5), s25=sma(closes,25);
+  if(s5&&s25){
+    if(s5>s25){score++; lines.push(["BUY","移動平均(5/25)","ゴールデンクロス側 → 上昇寄り"]);}
+    else{score--; lines.push(["SELL","移動平均(5/25)","デッドクロス側 → 下降寄り"]);}
+    const dp=(price-s25)/s25*100; const side=price>s25?"上":"下";
+    lines.push(["NEU","25MAとの位置",`価格が25MAの${side} (${dp>=0?'+':''}${dp.toFixed(2)}%)・参考`]);
+  }
+  const r=rsi(closes,14);
+  if(r!=null){
+    if(r<=30){score+=3; lines.push(["BUY","RSI(14)",`${r.toFixed(0)} 売られすぎ → 反発の買い場【主力】`]);}
+    else if(r>=70){score-=3; lines.push(["SELL","RSI(14)",`${r.toFixed(0)} 買われすぎ → 反落の売り場【主力】`]);}
+    else{const t=r>55?"やや強":(r<45?"やや弱":"中立"); lines.push(["NEU","RSI(14)",`${r.toFixed(0)} ${t}（極値=30以下/70以上を待つ）`]);}
+  }
+  const mc=macd(closes);
+  if(mc){
+    if(mc.m>mc.s){score++; lines.push(["BUY","MACD","買いシグナル(シグナル上)"]);}
+    else{score--; lines.push(["SELL","MACD","売りシグナル(シグナル下)"]);}
+  }
+  const bb=bollinger(closes);
+  if(bb){
+    if(price<=bb.low){score+=2; lines.push(["BUY","ボリンジャー","下限タッチ → 反発の買い場【主力】"]);}
+    else if(price>=bb.up){score-=2; lines.push(["SELL","ボリンジャー","上限タッチ → 反落の売り場【主力】"]);}
+    else{const pos=(price-bb.low)/(bb.up-bb.low)*100; lines.push(["NEU","ボリンジャー",`バンド内 (下から${pos.toFixed(0)}%)`]);}
+  }
+  return {score, lines};
+}
+// 日足スコア → 総合判定（検証したエントリー基準= ±ENTRY_GATE）
+function verdict(score){
+  if(score>=6) return ["強い買い","★★★★★","buy"];
+  if(score>=ENTRY_GATE) return ["買い","★★★★☆","buy"];
+  if(score>=1) return ["やや買い（基準未達）","★★★☆☆","neu"];
+  if(score<=-6) return ["強い売り","★★★★★","sell"];
+  if(score<=-ENTRY_GATE) return ["売り","★★★★☆","sell"];
+  if(score<=-1) return ["やや売り（基準未達）","★★★☆☆","neu"];
+  return ["様子見（中立）","★★☆☆☆","neu"];
+}
+
+// ===== バックテスト（過去勝率・利確損切り検証）=====
+// bars: [{h,l,c}, ...] 古い順
+function atr(bars,n=14){
+  if(bars.length<n+1) return null;
+  const trs=[];
+  for(let i=1;i<bars.length;i++){
+    const h=bars[i].h,l=bars[i].l,pc=bars[i-1].c;
+    trs.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)));
+  }
+  return trs.slice(trs.length-n).reduce((x,y)=>x+y,0)/n;
+}
+function backtest(bars, entryThresh=ENTRY_GATE, slATR=2.0, tpATR=2.0, maxHold=15){
+  const warmup=80; let nextFree=80; const trades=[];
+  const closes=bars.map(b=>b.c);
+  for(let t=warmup;t<bars.length-1;t++){
+    if(t<nextFree) continue;
+    const sub=closes.slice(0,t+1);
+    const {score}=analyze(sub, sub[sub.length-1]);
+    const d = score>=entryThresh?1:(score<=-entryThresh?-1:0);
+    if(d===0) continue;
+    const a=atr(bars.slice(0,t+1)); if(!a) continue;
+    const entry=bars[t].c, sl=entry-d*slATR*a, tp=entry+d*tpATR*a;
+    let outcome=null, heldTo=t+1;
+    for(let j=t+1;j<Math.min(t+1+maxHold,bars.length);j++){
+      heldTo=j; const hi=bars[j].h, lo=bars[j].l;
+      const hitSL = d===1? lo<=sl : hi>=sl;
+      const hitTP = d===1? hi>=tp : lo<=tp;
+      if(hitSL){outcome={r:"loss",p:sl};break;}
+      if(hitTP){outcome={r:"win",p:tp};break;}
+    }
+    if(!outcome){const ex=bars[heldTo].c; outcome={r:(ex-entry)*d>0?"win":"loss",p:ex};}
+    trades.push({dir:d, win:outcome.r==="win", ret:(outcome.p-entry)/entry*100*d});
+    nextFree=heldTo+1;
+  }
+  return trades;
+}
+function winrateStats(trades, dir){
+  const ts=trades.filter(t=>t.dir===dir);
+  if(!ts.length) return null;
+  const n=ts.length;
+  const wins=ts.filter(t=>t.win).map(t=>t.ret);
+  const losses=ts.filter(t=>!t.win).map(t=>t.ret);
+  const exp=ts.reduce((s,t)=>s+t.ret,0)/n;
+  const avgWin=wins.length? wins.reduce((a,b)=>a+b,0)/wins.length : 0;
+  const avgLoss=losses.length? losses.reduce((a,b)=>a+b,0)/losses.length : 0;
+  const grossWin=wins.reduce((a,b)=>a+b,0), grossLoss=-losses.reduce((a,b)=>a+b,0);
+  const pf= grossLoss>0? grossWin/grossLoss : Infinity;
+  const payoff= avgLoss!==0? avgWin/Math.abs(avgLoss) : Infinity;
+  return {wr:wins.length/n*100, n, exp, avgWin, avgLoss, pf, payoff};
+}
+// 勝率＋損益バランスから総合評価
+function rateScheme(st){
+  if(st.exp<=0 || st.pf<1.0) return {mark:"SELL", text:"× 非推奨（期待値マイナス＝負け越し）", ok:false};
+  if(st.wr>=WIN_GATE && st.pf>=PF_GATE) return {mark:"BUY", text:"◎ 合格（勝率60%以上＋損益バランス良好）", ok:true};
+  if(st.wr>=WIN_GATE) return {mark:"BUY", text:"○ 勝率は合格だが損益バランスが弱い（負け幅大）", ok:false};
+  if(st.pf>=1.5) return {mark:"NEU", text:"○ 勝率は60%未満だが損益バランス良好・期待値良好", ok:false};
+  return {mark:"NEU", text:"△ 一長一短（基準未達）", ok:false};
+}
+
+// ===== ファンダ（社会・金融・政治情勢）2026-05-31時点スナップショット =====
+const FUNDAMENTALS = {
+  updated:"2026-05-31",
+  summary:"Fed利下げ局面(3.50-3.75%)×BOJ利上げ局面(0.75%→1.0%目処)で日米金利差は縮小＝中期的に円高寄り。中東情勢(ホルムズ海峡)の原油高が円の重荷。USD/JPYは160が介入ライン(4/30に円買い介入)で上値重い。ECB据置2.00%でユーロ底堅い。地政学リスクで安全通貨(USD/JPY/CHF)優位、資源国通貨(AUD/NZD)は重い。",
+  currencies:{
+    USD:{bias:0, note:"Fed利下げで構造的にやや軟調。地政学リスクの安全通貨買いも。差引き中立。"},
+    JPY:{bias:1, note:"BOJ利上げ＋介入警戒＋金利差縮小で円高圧力。原油高は重荷。"},
+    EUR:{bias:1, note:"ECB据置(2.00%)で底堅い。原油高・リスクオフは逆風。"},
+    GBP:{bias:0, note:"BoEは緩やかな緩和。方向感は限定的。"},
+    AUD:{bias:-1,note:"リスクオフで売られやすい資源国通貨。"},
+    NZD:{bias:-1,note:"リスクオフで売られやすい資源国通貨。"},
+    CAD:{bias:1, note:"産油国通貨。原油高は支援材料。"},
+    CHF:{bias:1, note:"代表的な安全通貨。地政学リスクで買われやすい。"}
+  },
+  pairAlerts:{
+    USDJPY:{note:"160円は政府の介入ライン。160接近の新規『買い』は介入リスク大(4/30に円買い介入)。", level:160.0, dangerDir:"up", near:1.0}
+  },
+  eventsNote:"FOMC・日銀会合・米雇用統計(毎月第1金曜)・CPI前後は値が飛びやすい。発表直前直後の新規エントリーは避ける。正確な日時は経済指標カレンダーで確認を。"
+};
+function fundTilt(base, quote, price){
+  const c=FUNDAMENTALS.currencies;
+  const b=(c[base]?.bias)||0, q=(c[quote]?.bias)||0;
+  const tilt=Math.max(-1,Math.min(1,b-q));
+  const notes=[];
+  if(c[base]) notes.push(`${base}: ${c[base].note}`);
+  if(c[quote]) notes.push(`${quote}: ${c[quote].note}`);
+  let warning=null;
+  const al=FUNDAMENTALS.pairAlerts[base+quote];
+  if(al && price!=null){
+    if(al.dangerDir==="up" && price>=al.level-al.near) warning=al.note;
+    if(al.dangerDir==="down" && price<=al.level+al.near) warning=al.note;
+  }
+  return {tilt, notes, warning};
+}
+
+// ===== データ取得 =====
+// Twelve Data（キーあり）。ohlc=true で {o,h,l,c} 配列、falseで終値配列を返す
+async function fetchTD(symbol, interval, outputsize, ohlc=false){
+  const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}`
+    +`&interval=${interval}&outputsize=${outputsize}&apikey=${apiKey}`;
+  const res=await fetch(url);
+  const j=await res.json();
+  if(j.status==="error" || !j.values) throw new Error(j.message || "データ取得エラー");
+  // Twelve Data は新しい順 → 古い順に並べ替え
+  const v=j.values.slice().reverse();
+  if(ohlc) return v.map(x=>({o:+x.open,h:+x.high,l:+x.low,c:+x.close}));
+  return v.map(x=>parseFloat(x.close));
+}
+// frankfurter（キーなし・日足のみ）
+function fmt(d){return d.toISOString().slice(0,10);}
+async function fetchFrankfurter(base, quote){
+  const end=new Date(), start=new Date(); start.setDate(start.getDate()-400);
+  const url=`https://api.frankfurter.dev/v1/${fmt(start)}..${fmt(end)}?base=${base}&symbols=${quote}`;
+  const res=await fetch(url);
+  if(!res.ok) throw new Error("通信エラー "+res.status);
+  const j=await res.json();
+  const days=Object.keys(j.rates).sort();
+  return days.map(d=>j.rates[d][quote]);
+}
+
+// ===== 簡易チャート（終値＋25MA） =====
+function drawChart(closes){
+  const cv=document.getElementById("chart"); if(!cv||!closes) return;
+  const ctx=cv.getContext("2d"); const W=cv.width=cv.clientWidth*2, H=cv.height=300;
+  ctx.clearRect(0,0,W,H);
+  const N=Math.min(60,closes.length), seg=closes.slice(closes.length-N), ma=[];
+  for(let i=closes.length-N;i<closes.length;i++){
+    if(i>=24){let s=0;for(let k=i-24;k<=i;k++)s+=closes[k]; ma.push(s/25);} else ma.push(null);
+  }
+  const all=seg.concat(ma.filter(v=>v!=null));
+  const min=Math.min(...all), max=Math.max(...all), pad=(max-min)*0.1||0.1, lo=min-pad, hi=max+pad;
+  const x=i=>40+(W-60)*i/(N-1), y=v=>20+(H-40)*(1-(v-lo)/(hi-lo));
+  ctx.strokeStyle="#2a3550"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(40,H-20); ctx.lineTo(W-20,H-20); ctx.stroke();
+  ctx.strokeStyle="#5b8cff"; ctx.lineWidth=3; ctx.beginPath();
+  seg.forEach((v,i)=>{i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v));}); ctx.stroke();
+  ctx.strokeStyle="#ffcf4a"; ctx.lineWidth=3; ctx.beginPath(); let st=false;
+  ma.forEach((v,i)=>{if(v==null)return; if(!st){ctx.moveTo(x(i),y(v));st=true;}else ctx.lineTo(x(i),y(v));}); ctx.stroke();
+  ctx.fillStyle="#9aa7c2"; ctx.font="20px sans-serif";
+  ctx.fillText(hi.toFixed(2),4,28); ctx.fillText(lo.toFixed(2),4,H-24);
+}
+
+// ===== 1つの時間軸ぶんのHTML =====
+function tfBlock(title, score, lines){
+  const tagCls={BUY:"t-buy",SELL:"t-sell",NEU:"t-neu"}, tagTxt={BUY:"買い",SELL:"売り",NEU:"中立"};
+  const rows=lines.map(l=>`<div class="row"><div class="tag ${tagCls[l[0]]}">${tagTxt[l[0]]}</div>
+    <div class="name">${l[1]}</div><div class="msg">${l[2]}</div></div>`).join("");
+  return `<div class="card"><div class="tf-title">${title}
+    <span class="sc">スコア ${score>=0?'+':''}${score}</span></div>${rows}</div>`;
+}
+// ファンダ情勢パネル
+function fundBlock(tilt, notes, warning){
+  const tagCls={1:"t-buy","-1":"t-sell",0:"t-neu"}, tagTxt={1:"買い寄り","-1":"売り寄り",0:"中立"};
+  const warnHtml = warning? `<div class="warn">⚠ ${warning}</div>` : "";
+  return warnHtml + `<div class="card"><div class="tf-title">ファンダ（社会・金融・政治情勢／参考）
+    <span class="sc">傾き ${tilt>=0?'+':''}${tilt}</span></div>
+    <div class="row"><div class="tag ${tagCls[tilt]}">${tagTxt[tilt]}</div>
+      <div class="msg">情勢の方向（参考・売買判定には自動加算しません）</div></div>
+    ${notes.map(n=>`<div class="fnote">・${n}</div>`).join("")}
+    <div class="fnote" style="margin-top:6px;color:var(--sub);">情勢データ更新日: ${FUNDAMENTALS.updated}</div>
+    </div>`;
+}
+// 売買プラン（利確損切り・過去勝率）パネル
+// ★サインの有無に関わらず、利確/損切りの目安と 買い・売り両方の勝率を常に表示★
+// dispDir = 表示に使う方向（実サインがあればそれ、無ければ相場の傾き）
+function planBlock(symbol, price, direction, dispDir, dailyBars){
+  const head = `<div class="card"><div class="tf-title">売買プラン（日足・SL/TP=2.0/2.0・5年検証）`;
+  const a = atr(dailyBars);
+  if(!a) return head+`</div><div class="fnote">過去検証データの取得に失敗。更新を。</div></div>`;
+  const pip = symbol.endsWith("JPY")?0.01:0.0001;
+  const dec = price>50?3:5;
+  const fnum = v => v===Infinity ? "∞" : v.toFixed(2);
+  const slA=2.0, tpA=2.0, dd=dispDir;
+  const sl=price-dd*slA*a, tp=price+dd*tpA*a;
+  const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
+  const dname = dd===1?"買い":"売り";
+  const real = direction!==0;
+
+  const btFull=backtest(dailyBars,ENTRY_GATE,slA,tpA);
+  const split=Math.floor(dailyBars.length*0.7);
+  const btOos=backtest(dailyBars.slice(split),ENTRY_GATE,slA,tpA);
+  const st={1:{full:winrateStats(btFull,1), oos:winrateStats(btOos,1)},
+            "-1":{full:winrateStats(btFull,-1), oos:winrateStats(btOos,-1)}};
+
+  const wr = s => s ? `勝率<b>${s.wr.toFixed(0)}%</b>（${s.n}回）/ 期待値${s.exp>=0?'+':''}${s.exp.toFixed(2)}% / PF${fnum(s.pf)}` : "サンプル不足";
+
+  const headLine = real
+    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】サイン点灯　推奨エントリー ${price.toFixed(dec)}</span></div>`
+    : `<div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません（様子見）</b><br>
+       <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
+
+  const tpbox = `<div class="howto">
+      <div class="fnote" style="color:var(--sub)">ここまで来たら決済（OCOで同時に置く）</div>
+      <div class="howto-tp">● 利確の目安 → <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
+      <div class="howto-sl">● 損切りの目安 → <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）←必ず置く</div></div>`;
+
+  // 推奨ロット（資金管理）
+  let lotbox;
+  const lc = calcLot(symbol, slp);
+  if(lc){
+    const whole=Math.floor(lc.lots), ap=lc.exact?"":"（概算）";
+    if(whole>=1){
+      const actual=whole*slp*lc.vpp;
+      lotbox=`<div class="lotbox">💴 推奨ロット ≒ <b>${lc.lots.toFixed(1)}万通貨</b> → DMMは1万通貨単位なので <b>${whole}万通貨</b>${ap}<br>
+        損切りに当たった時の損失 ≒ <b>¥${Math.round(actual).toLocaleString()}</b>（資金の約${(actual/balance*100).toFixed(1)}%）</div>`;
+    }else{
+      const one=slp*lc.vpp;
+      lotbox=`<div class="lotbox" style="border-color:var(--sell);color:#ffb3ba;">⚠ 資金¥${balance.toLocaleString()}・リスク${riskPct}%だと、最小1万通貨でも損失≒¥${Math.round(one).toLocaleString()}（資金の${(one/balance*100).toFixed(1)}%）でオーバー。<br>
+        → 資金を増やすか、損切り幅の狭い場面を待つ。</div>`;
+    }
+  }else{
+    lotbox=`<div class="lotbox">💴 上の「資金(円)」を入れると、損失が資金の${riskPct}%になる<b>推奨ロット</b>を自動計算します。</div>`;
+  }
+
+  const rateRow=(dv,nm)=>{
+    const cur = dv===dd, col = dv===1?'var(--buy)':'var(--sell)';
+    const s=st[dv], tc=cur?'var(--text)':'var(--sub)';
+    return `<div class="plan-line"><span class="nm" style="color:${cur?col:'var(--sub)'}">【${nm}】${cur?' ← いま見ている方向':''}</span><br>
+      <span class="fnote" style="color:${tc}">全期間(5年)　${wr(s.full)}</span><br>
+      <span class="fnote" style="color:${tc}">本番想定(直近)　${wr(s.oos)}</span></div>`;
+  };
+
+  const fullDd = st[dd].full;
+  let evalTxt = "";
+  if(fullDd){
+    evalTxt = `<div class="fnote" style="margin-top:4px;">総合評価（${dname}・全期間で判定）: ${rateScheme(fullDd).text}</div>`;
+    if(fullDd.n < 10) evalTxt += `<div class="fnote">※判定に使った取引が${fullDd.n}回と少なめ。参考程度に。</div>`;
+    const slDist = slp*pip/price*100;
+    if(fullDd.exp>0 && slDist>0){
+      const per = fullDd.exp/slDist*riskPct;
+      evalTxt += `<div class="fnote" style="color:var(--buy)">→ リスク${riskPct}%で続けた場合、1回あたりの期待リターン ≒ 資金の +${per.toFixed(2)}%（勝ち負けを均した平均）</div>`;
+    }
+  }
+  const good = fullDd && fullDd.exp>0 && fullDd.pf>=1.0;
+  let howto;
+  if(real && good){
+    howto=`<div class="howto">
+        <div class="howto-t">📲 DMMでのやり方</div>
+        <div class="howto-s"><b>①新規注文</b>：いまの値で<b>「${dname}」</b>でエントリー</div>
+        <div class="howto-s"><b>②「OCO注文」で利確と損切りを同時に置く</b><br>
+          <span class="ex" style="color:var(--sub)">※片方が成立したら、もう片方は自動でキャンセル。</span></div>
+        <div class="howto-tp">利確（指値） → <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
+        <div class="howto-sl">損切り（逆指値） → <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）【最重要】</div>
+        <div class="howto-s">③あとは自動決済。見ていなくてOK。</div>
+      </div>`;
+  }else if(real){
+    howto=`<div class="fnote" style="margin-top:8px;color:var(--sell);">→ この方向は過去成績が振るわず（負け越し）。見送り推奨。</div>`;
+  }else{
+    howto=`<div class="fnote" style="margin-top:8px;color:var(--sub);">※上は参考です。日足スコアが ±${ENTRY_GATE} に達したら正式サイン。焦らずサインを待つのがコツ。</div>`;
+  }
+
+  return head+`<span class="sc">${dname} / ATR≈${(a/pip).toFixed(0)}pip</span></div>
+    ${headLine}
+    ${tpbox}
+    ${lotbox}
+    <div class="fnote" style="color:var(--accent);margin-top:6px;">◆ 過去の勝率（この損切り/利確で）</div>
+    ${rateRow(1,"買い")}
+    ${rateRow(-1,"売り")}
+    <div class="fnote">※本番想定＝設定選びに使っていない直近期間。ここが良いほど信頼できます。</div>
+    ${evalTxt}
+    ${howto}</div>`;
+}
+
+// ===== 描画 =====
+async function render(){
+  const out=document.getElementById("out");
+  out.innerHTML='<div class="loading">読み込み中…（検証に数秒）</div>';
+  const [base,quote]=current, symbol=base+"/"+quote;
+  try{
+    let panels="", chartData=null, price, dailyBars=null;
+    let dailyScore=0, s8=null, s4=null;
+
+    if(apiKey){
+      // フル版：日足OHLC + 4時間足 +（4hから作る）8時間足
+      const [dBars, h4] = await Promise.all([
+        fetchTD(symbol,"1day",1300,true),   // 過去勝率検証用にOHLCを多めに
+        fetchTD(symbol,"4h",350)
+      ]);
+      dailyBars=dBars;
+      const d=dBars.map(b=>b.c), h8=resample(h4,2);
+      price=h4[h4.length-1]; chartData=h4;
+      const A=analyze(d,price), B=analyze(h8,price), C=analyze(h4,price);
+      dailyScore=A.score; s8=B.score; s4=C.score;
+      panels = tfBlock("日足（判定の主軸）",A.score,A.lines)
+             + tfBlock("8時間足（タイミング）",B.score,B.lines)
+             + tfBlock("4時間足（タイミング）",C.score,C.lines);
+    }else{
+      const d=await fetchFrankfurter(base,quote);
+      price=d[d.length-1]; chartData=d;
+      const A=analyze(d,price); dailyScore=A.score;
+      panels = `<div class="banner">いまは<b>日足のみ</b>です。無料APIキーを入れると
+        <b>8h・4h（タイミング）＋過去勝率・利確損切り</b>が使えます。</div>`
+        + tfBlock("日足（判定の主軸・ECB公示）",A.score,A.lines);
+    }
+
+    // 判定は日足を主軸に（過去検証したのは日足のエントリーのため）
+    let direction = dailyScore>=ENTRY_GATE ? 1 : (dailyScore<=-ENTRY_GATE ? -1 : 0);
+
+    // 8h/4h は「いま入っていいタイミングか」の確認
+    const tfd=s=> s>=1?1:(s<=-1?-1:0);
+    let timing="—";
+    if(direction!==0 && s8!=null){
+      const c=(tfd(s8)===direction?1:0)+(tfd(s4)===direction?1:0);
+      timing = c===2 ? "◎ 8h/4hも同じ向き → タイミング良し"
+             : c===1 ? "○ 8h/4hの片方が同調 → まずまず"
+             : "△ 8h/4hがまだ逆 → 反転を確認してから（押し目/戻り待ち）";
+    }
+
+    // ファンダ（参考）：方向は作らず、介入警告のときだけ『買い』を止める歯止め
+    const {tilt, notes, warning} = fundTilt(base, quote, price);
+    let override="";
+    if(warning && direction===1){ direction=0; override=
+      `<div class="warn">⚠ ファンダ警告により『買い』は見送りに切替（介入リスク）</div>`; }
+
+    const [label,stars,cls]=verdict(dailyScore);
+    // 表示に使う方向：実サインがあればそれ、無ければ相場の傾き（日足→下位足）
+    const dispDir = direction!==0 ? direction
+      : (dailyScore>0 ? 1 : (dailyScore<0 ? -1 : (((s8||0)+(s4||0))>=0 ? 1 : -1)));
+    const planHtml = dailyBars ? planBlock(symbol,price,direction,dispDir,dailyBars)
+      : `<div class="card"><div class="fnote">※過去勝率・利確損切りはAPIキー入力時のみ（OHLCデータが必要）。</div></div>`;
+
+    out.innerHTML=`
+      <div class="card">
+        <div class="pair-name">${symbol}</div>
+        <div class="price">${price.toFixed(price>50?2:4)}</div>
+        <canvas id="chart"></canvas>
+        <div style="font-size:10px;color:var(--sub);text-align:center;">
+          <span style="color:#5b8cff;">━</span> 価格
+          <span style="color:#ffcf4a;">━</span> 25移動平均（${apiKey?'4時間足':'日足'}）</div>
+      </div>
+      <div class="verdict v-${cls}">
+        <div class="label">${label}</div><div class="stars">${stars}</div>
+        <div class="score">日足スコア ${dailyScore>=0?'+':''}${dailyScore}（エントリー基準 ±${ENTRY_GATE}）${s8!=null?` ・ 8h${s8>=0?'+':''}${s8}/4h${s4>=0?'+':''}${s4}＝タイミング`:''}</div>
+        ${direction!==0?`<div class="score" style="margin-top:2px;">${timing}</div>`:''}
+      </div>
+      ${override}
+      ${fundBlock(tilt, notes, warning)}
+      ${planHtml}
+      ${panels}`;
+    drawChart(chartData);
+    setHint(dailyScore, direction);
+  }catch(e){
+    out.innerHTML=`<div class="card"><div class="err">取得に失敗：${e.message}<br>
+      APIキーや通信環境を確認して「更新する」を押してください。<br>
+      （1分に8回以上だと制限がかかります。少し待って再実行を）</div></div>`;
+  }
+}
+function setHint(dailyScore, direction){
+  let h;
+  if(direction===1) h=`<b>買いサイン</b>（日足が基準到達）。8h/4hの向きが揃う押し目で。必ず<b>損切り</b>を置く。`;
+  else if(direction===-1) h=`<b>売りサイン</b>（日足が基準到達）。8h/4hの向きが揃う戻りで。必ず<b>損切り</b>を置く。`;
+  else h=`日足に強いサイン（RSIの極値など）が出ていません。無理に入らず<b>様子見</b>が正解。`;
+  document.getElementById("hint").innerHTML=
+    `このツールは<b>RSI・ボリンジャーの「行きすぎ→反発」を主役</b>に、過去5年で実際に勝てた条件だけを拾います。
+     サインが出る回数は少なめですが、その分<b>質の高いサインだけ</b>に絞っています。<br><br>${h}`;
+}
+
+// ===== UI初期化 =====
+const pairsEl=document.getElementById("pairs");
+PAIRS.forEach(p=>{
+  const b=document.createElement("button");
+  b.textContent=p[0]+"/"+p[1];
+  if(p[0]===current[0]&&p[1]===current[1]) b.classList.add("on");
+  b.onclick=()=>{current=p; [...pairsEl.children].forEach(c=>c.classList.remove("on"));
+    b.classList.add("on"); render();};
+  pairsEl.appendChild(b);
+});
+const keyInput=document.getElementById("key");
+keyInput.value=apiKey;
+document.getElementById("saveKey").onclick=()=>{
+  apiKey=keyInput.value.trim(); localStorage.setItem("td_key",apiKey);
+  document.getElementById("saveKey").textContent="保存済";
+  setTimeout(()=>document.getElementById("saveKey").textContent="保存",1500);
+  render();
+};
+document.getElementById("reload").onclick=render;
+
+// 資金管理の入力（資金・リスク%）を記憶して再計算
+const balInput=document.getElementById("bal");
+if(balance>0) balInput.value=balance;
+balInput.addEventListener("change",()=>{
+  balance=parseFloat(balInput.value.replace(/[^0-9.]/g,""))||0;
+  localStorage.setItem("fx_bal",balance); render();
+});
+const riskSel=document.getElementById("risk");
+riskSel.value=String(riskPct);
+riskSel.addEventListener("change",()=>{
+  riskPct=parseFloat(riskSel.value)||2;
+  localStorage.setItem("fx_risk",riskPct); render();
+});
+render();
+</script>
+</body>
+</html>
