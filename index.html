@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FXシグナル">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>FX シグナル判定</title>
 <style>
   :root{
@@ -61,6 +67,15 @@
   .lotbox{margin-top:8px; background:#0c111c; border:1px solid var(--line);
     border-radius:10px; padding:8px 10px; font-size:12px; line-height:1.6;}
   .lotbox b{color:var(--accent);}
+  .scanbtn{background:var(--card); color:var(--accent); border:1px solid var(--accent);
+    margin-top:-6px;}
+  .scan-row{display:flex; align-items:center; gap:8px; padding:10px 6px;
+    border-bottom:1px solid var(--line); cursor:pointer;}
+  .scan-row:last-child{border-bottom:none;}
+  .scan-row:active{background:#0c111c;}
+  .scan-pair{flex:0 0 84px; font-weight:700; font-size:14px;}
+  .scan-score{flex:0 0 66px; font-size:12px; color:var(--sub); text-align:center;}
+  .scan-msg{flex:1; font-size:12px; color:var(--sub);}
   .banner{background:rgba(255,207,74,.12); border:1px solid var(--accent); color:var(--accent);
     border-radius:12px; padding:10px 12px; font-size:12px; line-height:1.6; margin-bottom:12px;}
   .banner a{color:var(--accent); font-weight:700;}
@@ -122,6 +137,7 @@
 
   <div class="pairs" id="pairs"></div>
   <button class="reload" id="reload">↻ 更新する</button>
+  <button class="reload scanbtn" id="scan">🔍 全ペアを一括チェック（キー不要）</button>
 
   <div id="out"><div class="loading">通貨ペアを選んでください</div></div>
 
@@ -167,11 +183,23 @@ let riskPct = parseFloat(localStorage.getItem("fx_risk")) || 2;  // 1回のリ�
 const WIN_GATE = 60;   // 「合格」とみなす過去勝率の基準(%)
 const PF_GATE = 1.3;   // 損益バランス(プロフィットファクター)の合格ライン
 
-// 資金管理：1Lot=1万通貨あたり1pipで動く円（XXX/JPYは100円、XXX/USDは概算150円）
+// 資金管理：1Lot=1万通貨あたり1pipで動く円。
+// XXX/JPYは常に100円（正確）。それ以外は「決済通貨→円」の実レートを取得して正確に計算
+// （取得前・失敗時のみ概算にフォールバック）。
+const quoteJpyRates = {};   // 例: {USD:161.1, GBP:215.3}
+async function ensureQuoteJpy(quote){
+  if(quote==="JPY" || quoteJpyRates[quote]) return;
+  try{
+    const res=await fetch(`https://api.frankfurter.dev/v1/latest?base=${quote}&symbols=JPY`);
+    if(res.ok){ const j=await res.json(); if(j.rates && j.rates.JPY) quoteJpyRates[quote]=j.rates.JPY; }
+  }catch(e){/* 概算にフォールバック */}
+}
 function yenPerPip(symbol){
-  if(symbol.endsWith("JPY")) return {v:100, exact:true};
-  if(symbol.endsWith("USD")) return {v:150, exact:false};  // USDJPY≒150の概算
-  return {v:100, exact:false};
+  const q=symbol.slice(-3);
+  if(q==="JPY") return {v:100, exact:true};
+  const r=quoteJpyRates[q];
+  if(r) return {v:r, exact:true};        // 1万通貨×0.0001=1決済通貨 → r円
+  return {v:q==="USD"?150:190, exact:false};
 }
 // 損失が資金のrisk%になる推奨ロット(万通貨)
 function calcLot(symbol, slPips){
@@ -323,22 +351,22 @@ function rateScheme(st){
   return {mark:"NEU", text:"△ 一長一短（基準未達）", ok:false};
 }
 
-// ===== ファンダ（社会・金融・政治情勢）2026-05-31時点スナップショット =====
+// ===== ファンダ（社会・金融・政治情勢）2026-07-05時点スナップショット =====
 const FUNDAMENTALS = {
-  updated:"2026-05-31",
-  summary:"Fed利下げ局面(3.50-3.75%)×BOJ利上げ局面(0.75%→1.0%目処)で日米金利差は縮小＝中期的に円高寄り。中東情勢(ホルムズ海峡)の原油高が円の重荷。USD/JPYは160が介入ライン(4/30に円買い介入)で上値重い。ECB据置2.00%でユーロ底堅い。地政学リスクで安全通貨(USD/JPY/CHF)優位、資源国通貨(AUD/NZD)は重い。",
+  updated:"2026-07-05",
+  summary:"米インフレ再燃でFedの利下げ観測は消滅し据置き＋利上げ観測すら浮上。日銀は利上げ継続姿勢だが政府のけん制観測があり、日米金利差拡大の思惑で円全面安。7/1に162.84円と約39年半ぶりの円安水準。財務省の介入発言はまだ限定的だが、160円台は介入警戒ゾーン＝突然の円買い介入で数円規模の急落リスクあり。",
   currencies:{
-    USD:{bias:0, note:"Fed利下げで構造的にやや軟調。地政学リスクの安全通貨買いも。差引き中立。"},
-    JPY:{bias:1, note:"BOJ利上げ＋介入警戒＋金利差縮小で円高圧力。原油高は重荷。"},
-    EUR:{bias:1, note:"ECB据置(2.00%)で底堅い。原油高・リスクオフは逆風。"},
-    GBP:{bias:0, note:"BoEは緩やかな緩和。方向感は限定的。"},
-    AUD:{bias:-1,note:"リスクオフで売られやすい資源国通貨。"},
-    NZD:{bias:-1,note:"リスクオフで売られやすい資源国通貨。"},
-    CAD:{bias:1, note:"産油国通貨。原油高は支援材料。"},
-    CHF:{bias:1, note:"代表的な安全通貨。地政学リスクで買われやすい。"}
+    USD:{bias:1, note:"インフレ再燃でFed利下げ観測が消滅、利上げ観測すら浮上。ドル買い優勢。"},
+    JPY:{bias:-1,note:"日銀は利上げ継続姿勢だが政府けん制観測で金利差拡大の思惑→円全面安。支えは介入警戒のみ。"},
+    EUR:{bias:0, note:"対ドルでは軟調・対円では堅調。方向感は中立。"},
+    GBP:{bias:0, note:"方向感は限定的。"},
+    AUD:{bias:0, note:"はっきりした材料に乏しく中立。"},
+    NZD:{bias:0, note:"はっきりした材料に乏しく中立。"},
+    CAD:{bias:0, note:"はっきりした材料に乏しく中立。"},
+    CHF:{bias:0, note:"安全通貨だが足元は材料に乏しく中立。"}
   },
   pairAlerts:{
-    USDJPY:{note:"160円は政府の介入ライン。160接近の新規『買い』は介入リスク大(4/30に円買い介入)。", level:160.0, dangerDir:"up", near:1.0}
+    USDJPY:{note:"7/1に162.84円と約39年半ぶりの円安。160円台は為替介入の警戒ゾーンで、突然の円買い介入が入ると数円規模で急落するリスク。新規『買い』は慎重に。", level:160.0, dangerDir:"up", near:1.0}
   },
   eventsNote:"FOMC・日銀会合・米雇用統計(毎月第1金曜)・CPI前後は値が飛びやすい。発表直前直後の新規エントリーは避ける。正確な日時は経済指標カレンダーで確認を。"
 };
@@ -577,6 +605,8 @@ async function render(){
       `<div class="warn">⚠ ファンダ警告により『買い』は見送りに切替（介入リスク）</div>`; }
 
     const [label,stars,cls]=verdict(dailyScore);
+    // クロス円以外はロット計算用に「決済通貨→円」レートを取得（1回だけ・失敗しても概算で続行）
+    await ensureQuoteJpy(quote);
     // 表示に使う方向：実サインがあればそれ、無ければ相場の傾き（日足→下位足）
     const dispDir = direction!==0 ? direction
       : (dailyScore>0 ? 1 : (dailyScore<0 ? -1 : (((s8||0)+(s4||0))>=0 ? 1 : -1)));
@@ -619,6 +649,70 @@ function setHint(dailyScore, direction){
      サインが出る回数は少なめですが、その分<b>質の高いサインだけ</b>に絞っています。<br><br>${h}`;
 }
 
+// ===== 全ペア一括スキャン（frankfurter・キー不要・日足のみ）=====
+// 11ペアを base 通貨ごとにまとめて7リクエストで取得し、日足スコアを一覧表示する。
+async function scanAll(){
+  const out=document.getElementById("out");
+  out.innerHTML='<div class="loading">全ペアをチェック中…（10秒ほど）</div>';
+  const groups={};
+  PAIRS.forEach(([b,q])=>{(groups[b]=groups[b]||[]).push(q);});
+  const end=new Date(), start=new Date(); start.setDate(start.getDate()-400);
+  const results=[], fails=[];
+  for(const b of Object.keys(groups)){
+    try{
+      const url=`https://api.frankfurter.dev/v1/${fmt(start)}..${fmt(end)}?base=${b}&symbols=${groups[b].join(",")}`;
+      const res=await fetch(url);
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const j=await res.json();
+      const days=Object.keys(j.rates).sort();
+      for(const q of groups[b]){
+        const closes=days.map(d=>j.rates[d][q]).filter(v=>v!=null);
+        if(closes.length<80){ fails.push(b+"/"+q); continue; }
+        const price=closes[closes.length-1];
+        const {score}=analyze(closes,price);
+        results.push({b,q,score,price});
+        if(q==="JPY") quoteJpyRates[b]=price;   // ついでにロット計算用レートも記憶
+      }
+    }catch(e){ groups[b].forEach(q=>fails.push(b+"/"+q)); }
+  }
+  renderScan(results,fails);
+}
+function renderScan(results,fails){
+  const out=document.getElementById("out");
+  if(!results.length){
+    out.innerHTML='<div class="card"><div class="err">一括チェックに失敗しました。通信環境を確認して再実行してください。</div></div>';
+    return;
+  }
+  results.sort((x,y)=>Math.abs(y.score)-Math.abs(x.score));
+  const sig=results.filter(r=>Math.abs(r.score)>=ENTRY_GATE).length;
+  const rows=results.map(r=>{
+    const d=r.score>=ENTRY_GATE?1:(r.score<=-ENTRY_GATE?-1:0);
+    const tag=d===1?"買いサイン":(d===-1?"売りサイン":"様子見");
+    const col=d===1?"var(--buy)":(d===-1?"var(--sell)":"var(--sub)");
+    return `<div class="scan-row" data-b="${r.b}" data-q="${r.q}">
+      <div class="scan-pair">${r.b}/${r.q}</div>
+      <div class="scan-score">日足 ${r.score>=0?'+':''}${r.score}</div>
+      <div class="scan-msg"><b style="color:${col}">${tag}</b>${d!==0?" ← タップで詳細":""}</div>
+    </div>`;
+  }).join("");
+  out.innerHTML=`<div class="card">
+    <div class="tf-title">全ペア一括チェック（日足）
+      <span class="sc">サイン ${sig}件 / ${results.length}ペア</span></div>
+    <div class="fnote" style="margin-bottom:4px;">スコアが大きい順。日足スコア±${ENTRY_GATE}以上でサイン。行をタップで詳細（勝率・利確損切り・推奨ロット）。</div>
+    ${rows}
+    ${fails.length?`<div class="fnote">※取得失敗: ${fails.join(" ")}</div>`:""}
+    <div class="fnote" style="margin-top:6px;">※一括チェックは日足のみ・キー不要（ECB日次データ）。毎営業日1回更新されます。</div>
+  </div>`;
+  [...out.querySelectorAll(".scan-row")].forEach(el=>{
+    el.onclick=()=>{
+      current=[el.dataset.b, el.dataset.q];
+      [...pairsEl.children].forEach((c,i)=>c.classList.toggle("on",
+        PAIRS[i][0]===current[0]&&PAIRS[i][1]===current[1]));
+      render();
+    };
+  });
+}
+
 // ===== UI初期化 =====
 const pairsEl=document.getElementById("pairs");
 PAIRS.forEach(p=>{
@@ -638,6 +732,7 @@ document.getElementById("saveKey").onclick=()=>{
   render();
 };
 document.getElementById("reload").onclick=render;
+document.getElementById("scan").onclick=scanAll;
 
 // 資金管理の入力（資金・リスク%）を記憶して再計算
 const balInput=document.getElementById("bal");
