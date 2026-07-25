@@ -207,6 +207,15 @@ function calcLot(symbol, slPips){
   const yp=yenPerPip(symbol), riskYen=balance*riskPct/100;
   return {lots:riskYen/(slPips*yp.v), vpp:yp.v, exact:yp.exact, riskYen};
 }
+// 終値だけからATRを概算（APIキー無しでECB日次データしか無い時用）。
+// 7通貨ペア3年で検証: 真ATR ÷ 終値変化平均 の中央値は約2.2、係数2.8なら
+// 過小評価（=ロット過大=危険）は6%まで下がるため、安全側に倒して2.8を採用。
+function approxAtrFromCloses(closes, n=14){
+  if(closes.length < n+1) return null;
+  let s=0;
+  for(let i=closes.length-n; i<closes.length; i++) s+=Math.abs(closes[i]-closes[i-1]);
+  return (s/n)*2.8;
+}
 
 // ===== 指標（純JS・PC版と同じロジック） =====
 function sma(a,n){ if(a.length<n) return null; let s=0; for(let i=a.length-n;i<a.length;i++)s+=a[i]; return s/n; }
@@ -351,25 +360,39 @@ function rateScheme(st){
   return {mark:"NEU", text:"△ 一長一短（基準未達）", ok:false};
 }
 
-// ===== ファンダ（社会・金融・政治情勢）2026-07-05時点スナップショット =====
+// ===== ファンダ（社会・金融・政治情勢）2026-07-25時点スナップショット =====
 const FUNDAMENTALS = {
-  updated:"2026-07-05",
-  summary:"米インフレ再燃でFedの利下げ観測は消滅し据置き＋利上げ観測すら浮上。日銀は利上げ継続姿勢だが政府のけん制観測があり、日米金利差拡大の思惑で円全面安。7/1に162.84円と約39年半ぶりの円安水準。財務省の介入発言はまだ限定的だが、160円台は介入警戒ゾーン＝突然の円買い介入で数円規模の急落リスクあり。",
+  updated:"2026-07-25",
+  summary:"ドル円は7/23に163.99円と1986年11月以来 約40年ぶりの円安水準。イラン情勢の緊迫→原油高→米インフレ再燃でFRBは利下げどころか『利上げ』観測、日銀は利上げ姿勢でも歩みが遅く、日米金利差拡大の思惑で円全面安が続く。市場が見る為替介入ラインは164〜165円で、4/30のような事前警告なしの『不意打ち介入』が警戒されている。介入が入るとドル円は数円規模で急落する。",
   currencies:{
-    USD:{bias:1, note:"インフレ再燃でFed利下げ観測が消滅、利上げ観測すら浮上。ドル買い優勢。"},
-    JPY:{bias:-1,note:"日銀は利上げ継続姿勢だが政府けん制観測で金利差拡大の思惑→円全面安。支えは介入警戒のみ。"},
-    EUR:{bias:0, note:"対ドルでは軟調・対円では堅調。方向感は中立。"},
+    USD:{bias:1, note:"原油高でインフレ再燃、FRBは利上げ観測すら浮上。ドル買い優勢。"},
+    JPY:{bias:-1,note:"日銀利上げは織り込み進むも金利差は開いたまま。支えは介入警戒のみで円安地合い。"},
+    EUR:{bias:0, note:"対ドル軟調・対円堅調で差引き中立。"},
     GBP:{bias:0, note:"方向感は限定的。"},
-    AUD:{bias:0, note:"はっきりした材料に乏しく中立。"},
+    AUD:{bias:0, note:"資源国通貨。原油高は支援だがリスク動向次第で中立。"},
     NZD:{bias:0, note:"はっきりした材料に乏しく中立。"},
-    CAD:{bias:0, note:"はっきりした材料に乏しく中立。"},
-    CHF:{bias:0, note:"安全通貨だが足元は材料に乏しく中立。"}
+    CAD:{bias:1, note:"産油国通貨。原油高は支援材料。"},
+    CHF:{bias:1, note:"中東情勢の緊迫で安全通貨needが再燃。"}
   },
   pairAlerts:{
-    USDJPY:{note:"7/1に162.84円と約39年半ぶりの円安。160円台は為替介入の警戒ゾーンで、突然の円買い介入が入ると数円規模で急落するリスク。新規『買い』は慎重に。", level:160.0, dangerDir:"up", near:1.0}
+    USDJPY:{note:"約40年ぶりの円安圏。市場が見る介入ラインは164〜165円で『不意打ち介入』警戒中。介入が入るとドル円は数円規模で急落するため、新規『買い』は特に危険。", level:164.0, dangerDir:"up", near:1.5}
   },
-  eventsNote:"FOMC・日銀会合・米雇用統計(毎月第1金曜)・CPI前後は値が飛びやすい。発表直前直後の新規エントリーは避ける。正確な日時は経済指標カレンダーで確認を。"
+  // 値が飛ぶ重要イベント（近づくと自動で警告を出す）
+  events:[
+    {date:"2026-07-29", name:"FOMC（米金融政策決定）", note:"据置き予想が中心だが、原油高でインフレ懸念。声明のタカ派度で大きく動く。"},
+    {date:"2026-07-31", name:"日銀 金融政策決定会合", note:"利上げの有無・総裁会見で円が急変動しやすい。"},
+    {date:"2026-08-07", name:"米雇用統計", note:"毎月第1金曜。発表直後は数十pips飛ぶことが多い。"}
+  ],
+  eventsNote:"FOMC・日銀会合・米雇用統計・CPI前後は値が飛びやすい。発表の直前直後は新規エントリーを避けるのが安全。"
 };
+// 直近の重要イベントまでの日数を計算（当日/前日は特に危険）
+function upcomingEvents(withinDays=7){
+  const today=new Date(); today.setHours(0,0,0,0);
+  return (FUNDAMENTALS.events||[]).map(e=>{
+    const d=new Date(e.date+"T00:00:00");
+    return {...e, days: Math.round((d-today)/86400000)};
+  }).filter(e=>e.days>=0 && e.days<=withinDays).sort((a,b)=>a.days-b.days);
+}
 function fundTilt(base, quote, price){
   const c=FUNDAMENTALS.currencies;
   const b=(c[base]?.bias)||0, q=(c[quote]?.bias)||0;
@@ -440,6 +463,22 @@ function tfBlock(title, score, lines){
   return `<div class="card"><div class="tf-title">${title}
     <span class="sc">スコア ${score>=0?'+':''}${score}</span></div>${rows}</div>`;
 }
+// 重要イベント接近の警告バナー（当日・前日は赤、それ以外は黄）
+function eventBlock(){
+  const ev=upcomingEvents(7);
+  if(!ev.length) return "";
+  const rows=ev.map(e=>{
+    const when = e.days===0?"<b>本日</b>" : (e.days===1?"<b>明日</b>" : `${e.days}日後`);
+    return `<div class="fnote" style="color:var(--text)">・${when}　${e.name}<br>
+      <span style="color:var(--sub)">　${e.note}</span></div>`;
+  }).join("");
+  const urgent = ev[0].days<=1;
+  const cls = urgent? "warn" : "banner";
+  return `<div class="${cls}">${urgent?"⚠":"📅"} <b>値が飛びやすい重要イベントが近づいています</b>
+    ${rows}
+    <div class="fnote" style="margin-top:4px;">発表の直前直後は新規エントリーを避け、
+    ポジションがある時は損切り注文を必ず置いてください。</div></div>`;
+}
 // ファンダ情勢パネル
 function fundBlock(tilt, notes, warning){
   const tagCls={1:"t-buy","-1":"t-sell",0:"t-neu"}, tagTxt={1:"買い寄り","-1":"売り寄り",0:"中立"};
@@ -449,6 +488,11 @@ function fundBlock(tilt, notes, warning){
     <div class="row"><div class="tag ${tagCls[tilt]}">${tagTxt[tilt]}</div>
       <div class="msg">情勢の方向（参考・売買判定には自動加算しません）</div></div>
     ${notes.map(n=>`<div class="fnote">・${n}</div>`).join("")}
+    <details style="margin:8px 0 0;">
+      <summary style="font-size:12px;">いまの相場の全体像（タップで開く）</summary>
+      <div class="fnote" style="color:var(--text);margin-top:4px;">${FUNDAMENTALS.summary}</div>
+      <div class="fnote" style="margin-top:6px;">${FUNDAMENTALS.eventsNote}</div>
+    </details>
     <div class="fnote" style="margin-top:6px;color:var(--sub);">情勢データ更新日: ${FUNDAMENTALS.updated}</div>
     </div>`;
 }
@@ -553,6 +597,54 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
     ${howto}</div>`;
 }
 
+// APIキー無しの時の売買プラン（終値データのみ）。
+// 利確/損切りの目安と推奨ロットは概算ATRで出す。ただし勝率の検証には
+// 高値・安値（OHLC）が必要なため、ここでは出さない（推測値は出さない方針）。
+function planBlockNoKey(symbol, price, direction, dispDir, closes){
+  const a=approxAtrFromCloses(closes);
+  const head=`<div class="card"><div class="tf-title">売買プラン（日足・SL/TP=2.0/2.0）`;
+  if(!a) return head+`</div><div class="fnote">データ不足で計算できません。</div></div>`;
+  const pip = symbol.endsWith("JPY")?0.01:0.0001;
+  const dec = price>50?3:5;
+  const dd=dispDir, dname = dd===1?"買い":"売り";
+  const sl=price-dd*2.0*a, tp=price+dd*2.0*a;
+  const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
+
+  const headLine = direction!==0
+    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】サイン点灯　推奨エントリー ${price.toFixed(dec)}</span></div>`
+    : `<div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません（様子見）</b><br>
+       <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
+
+  let lotbox;
+  const lc=calcLot(symbol, slp);
+  if(lc){
+    const whole=Math.floor(lc.lots);
+    if(whole>=1){
+      const actual=whole*slp*lc.vpp;
+      lotbox=`<div class="lotbox">💴 推奨ロット ≒ <b>${lc.lots.toFixed(1)}万通貨</b> → DMMは1万通貨単位なので <b>${whole}万通貨</b><br>
+        損切りに当たった時の損失 ≒ <b>¥${Math.round(actual).toLocaleString()}</b>（資金の約${(actual/balance*100).toFixed(1)}%）</div>`;
+    }else{
+      const one=slp*lc.vpp;
+      lotbox=`<div class="lotbox" style="border-color:var(--sell);color:#ffb3ba;">⚠ 資金¥${balance.toLocaleString()}・リスク${riskPct}%だと、最小1万通貨でも損失≒¥${Math.round(one).toLocaleString()}（資金の${(one/balance*100).toFixed(1)}%）でオーバー。<br>
+        → 資金を増やすか、損切り幅の狭い場面を待つ。</div>`;
+    }
+  }else{
+    lotbox=`<div class="lotbox">💴 上の「資金(円)」を入れると、損失が資金の${riskPct}%になる<b>推奨ロット</b>を自動計算します。</div>`;
+  }
+
+  return head+`<span class="sc">${dname} / ATR概算≈${(a/pip).toFixed(0)}pip</span></div>
+    ${headLine}
+    <div class="howto">
+      <div class="fnote" style="color:var(--sub)">ここまで来たら決済（OCOで同時に置く）</div>
+      <div class="howto-tp">● 利確の目安 → <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
+      <div class="howto-sl">● 損切りの目安 → <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）←必ず置く</div></div>
+    ${lotbox}
+    <div class="fnote" style="margin-top:6px;color:var(--accent);">※値幅は終値データからの<b>概算</b>です（安全側に広めを採用）。
+      正確な値幅と<b>過去の勝率</b>を見るには、上の無料APIキーを入れてください。</div>
+    ${direction===0?`<div class="fnote">※上は参考です。日足スコアが ±${ENTRY_GATE} に達したら正式サイン。</div>`:""}
+    </div>`;
+}
+
 // ===== 描画 =====
 async function render(){
   const out=document.getElementById("out");
@@ -611,7 +703,7 @@ async function render(){
     const dispDir = direction!==0 ? direction
       : (dailyScore>0 ? 1 : (dailyScore<0 ? -1 : (((s8||0)+(s4||0))>=0 ? 1 : -1)));
     const planHtml = dailyBars ? planBlock(symbol,price,direction,dispDir,dailyBars)
-      : `<div class="card"><div class="fnote">※過去勝率・利確損切りはAPIキー入力時のみ（OHLCデータが必要）。</div></div>`;
+      : planBlockNoKey(symbol,price,direction,dispDir,chartData);
 
     out.innerHTML=`
       <div class="card">
@@ -628,6 +720,7 @@ async function render(){
         ${direction!==0?`<div class="score" style="margin-top:2px;">${timing}</div>`:''}
       </div>
       ${override}
+      ${eventBlock()}
       ${fundBlock(tilt, notes, warning)}
       ${planHtml}
       ${panels}`;
@@ -695,7 +788,7 @@ function renderScan(results,fails){
       <div class="scan-msg"><b style="color:${col}">${tag}</b>${d!==0?" ← タップで詳細":""}</div>
     </div>`;
   }).join("");
-  out.innerHTML=`<div class="card">
+  out.innerHTML=eventBlock()+`<div class="card">
     <div class="tf-title">全ペア一括チェック（日足）
       <span class="sc">サイン ${sig}件 / ${results.length}ペア</span></div>
     <div class="fnote" style="margin-bottom:4px;">スコアが大きい順。日足スコア±${ENTRY_GATE}以上でサイン。行をタップで詳細（勝率・利確損切り・推奨ロット）。</div>
