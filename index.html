@@ -545,27 +545,9 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
     : `<div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません（様子見）</b><br>
        <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
 
-  const tpbox = `<div class="howto">
-            <div class="howto-tp">利確 <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip＝1万通貨で+${pipYen(symbol,tpp)}）</div>
-      <div class="howto-sl">損切 <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip＝1万通貨で-${pipYen(symbol,slp)}）</div></div>`;
+  const tpbox = orderSheet(symbol, dd, tp, sl, tpp, slp, dec);
+  const lotbox = "";
 
-  // 推奨ロット（資金管理）
-  let lotbox;
-  const lc = calcLot(symbol, slp);
-  if(lc){
-    const whole=Math.floor(lc.lots), ap=lc.exact?"":"（概算）";
-    if(whole>=1){
-      const actual=whole*slp*lc.vpp;
-      lotbox=`<div class="lotbox">💴 推奨ロット ≒ <b>${lc.lots.toFixed(1)}万通貨</b> → DMMは1万通貨単位なので <b>${whole}万通貨</b>${ap}<br>
-        損切りに当たった時の損失 ≒ <b>¥${Math.round(actual).toLocaleString()}</b>（資金の約${(actual/balance*100).toFixed(1)}%）</div>`;
-    }else{
-      const one=slp*lc.vpp;
-      lotbox=`<div class="lotbox" style="border-color:var(--sell);color:#ffb3ba;">⚠ 資金¥${balance.toLocaleString()}・リスク${riskPct}%だと、最小1万通貨でも損失≒¥${Math.round(one).toLocaleString()}（資金の${(one/balance*100).toFixed(1)}%）でオーバー。<br>
-        → 資金を増やすか、損切り幅の狭い場面を待つ。</div>`;
-    }
-  }else{
-    lotbox=`<div class="lotbox">💴 上の「資金(円)」を入れると、損失が資金の${riskPct}%になる<b>推奨ロット</b>を自動計算します。</div>`;
-  }
 
   const rateRow=(dv,nm)=>{
     const cur = dv===dd, col = dv===1?'var(--buy)':'var(--sell)';
@@ -587,21 +569,14 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
     }
   }
   const good = fullDd && fullDd.exp>0 && fullDd.pf>=1.0;
+  // 注文手順は上の orderSheet で出しているので、ここは「入っていいか」の判定だけ
   let howto;
   if(real && good){
-    howto=`<div class="howto">
-        <div class="howto-t">📲 DMMでのやり方</div>
-        <div class="howto-s"><b>①新規注文</b>：いまの値で<b>「${dname}」</b>でエントリー</div>
-        <div class="howto-s"><b>②「OCO注文」で利確と損切りを同時に置く</b><br>
-          <span class="ex" style="color:var(--sub)">※片方が成立したら、もう片方は自動でキャンセル。</span></div>
-        <div class="howto-tp">利確（指値） → <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip＝1万通貨で+${pipYen(symbol,tpp)}）</div>
-        <div class="howto-sl">損切り（逆指値） → <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip＝1万通貨で-${pipYen(symbol,slp)}）【最重要】</div>
-        <div class="howto-s">③あとは自動決済。見ていなくてOK。</div>
-      </div>`;
+    howto=`<div class="fnote" style="margin-top:8px;color:var(--buy);">→ この方向は過去の成績も良好です。</div>`;
   }else if(real){
-    howto=`<div class="fnote" style="margin-top:8px;color:var(--sell);">→ この方向は過去成績が振るわず（負け越し）。見送り推奨。</div>`;
+    howto=`<div class="fnote" style="margin-top:8px;color:var(--sell);">→ ただし<b>この方向は過去成績が振るいません（負け越し）</b>。見送りを推奨します。</div>`;
   }else{
-    howto=`<div class="fnote" style="margin-top:8px;color:var(--sub);">焦らずサインを待つのがコツ。</div>`;
+    howto=`<div class="fnote" style="margin-top:8px;color:var(--sub);">焦らずサインを待つのがコツです。</div>`;
   }
 
   return head+`<span class="sc">${dname}</span></div>
@@ -619,6 +594,44 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
 // APIキー無しの時の売買プラン（終値データのみ）。
 // 利確/損切りの目安と推奨ロットは概算ATRで出す。ただし勝率の検証には
 // 高値・安値（OHLC）が必要なため、ここでは出さない（推測値は出さない方針）。
+// 注文手順シート。「DMMで何をどの順に入力するか」をそのまま書く。
+// 金額は【実際に注文する枚数】で出す。1万通貨あたりの数字だけ出すと
+// 推奨ロットと桁が合わず「結局いくら損するのか」が分からなくなるため。
+function orderSheet(symbol, dd, tp, sl, tpp, slp, dec){
+  const dname = dd===1 ? "買い" : "売り";
+  const vpp = yenPerPip(symbol).v;
+  const lc = calcLot(symbol, slp);
+  let unit = 1, extra = "";
+  if(lc){
+    const whole = Math.floor(lc.lots);
+    if(whole >= 1){
+      unit = whole;
+    }else{
+      const one = Math.round(slp * vpp);
+      extra = `<div class="lotbox" style="border-color:var(--sell);color:#ffb3ba;">
+        ⚠ 資金¥${balance.toLocaleString()}・リスク${riskPct}%だと、最小の1万通貨でも
+        損失¥${one.toLocaleString()}（資金の${(one/balance*100).toFixed(1)}%）で上限を超えます。
+        <b>今回は見送る</b>のが安全です。</div>`;
+    }
+  }else{
+    extra = `<div class="fnote" style="color:var(--accent);">
+      ⚙設定で資金を入れると、あなたに合った数量を計算します（下の金額は1万通貨の場合）。</div>`;
+  }
+  const tpYen = Math.round(tpp * vpp * unit);
+  const slYen = Math.round(slp * vpp * unit);
+  const pct = balance>0 ? `（資金の${(slYen/balance*100).toFixed(1)}%）` : "";
+  return `<div class="howto">
+      <div class="howto-t">DMMでの注文手順</div>
+      <div class="howto-s">① <b>${dname}</b>で新規注文　数量 <b>${unit}万通貨</b></div>
+      <div class="howto-s">② 決済は<b>OCO</b>で、下の2つを同時に出す</div>
+      <div class="howto-tp">利確　<b>${tp.toFixed(dec)}</b>　→ 届いたら <b>+¥${tpYen.toLocaleString()}</b></div>
+      <div class="howto-sl">損切　<b>${sl.toFixed(dec)}</b>　→ 届いたら <b>-¥${slYen.toLocaleString()}</b>　必ず出す</div>
+      <div class="howto-s">③ あとは自動で決済されます。見ていなくてOK。</div>
+    </div>
+    <div class="lotbox">この取引で失う可能性がある上限は
+      <b>¥${slYen.toLocaleString()}</b>${pct}です。</div>${extra}`;
+}
+
 function planBlockNoKey(symbol, price, direction, dispDir, closes){
   const a=approxAtrFromCloses(closes);
   const head=`<div class="card"><div class="tf-title">売買プラン`;
@@ -630,35 +643,14 @@ function planBlockNoKey(symbol, price, direction, dispDir, closes){
   const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
 
   const headLine = direction!==0
-    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】サイン点灯　入る ${price.toFixed(dec)}</span></div>`
+    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">いま <b>${price.toFixed(dec)}</b> で「${dname}」が出ています</span></div>`
     : `<div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません（様子見）</b><br>
        <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
 
-  let lotbox;
-  const lc=calcLot(symbol, slp);
-  if(lc){
-    const whole=Math.floor(lc.lots);
-    if(whole>=1){
-      const actual=whole*slp*lc.vpp;
-      lotbox=`<div class="lotbox">💴 推奨ロット ≒ <b>${lc.lots.toFixed(1)}万通貨</b> → DMMは1万通貨単位なので <b>${whole}万通貨</b><br>
-        損切りに当たった時の損失 ≒ <b>¥${Math.round(actual).toLocaleString()}</b>（資金の約${(actual/balance*100).toFixed(1)}%）</div>`;
-    }else{
-      const one=slp*lc.vpp;
-      lotbox=`<div class="lotbox" style="border-color:var(--sell);color:#ffb3ba;">⚠ 資金¥${balance.toLocaleString()}・リスク${riskPct}%だと、最小1万通貨でも損失≒¥${Math.round(one).toLocaleString()}（資金の${(one/balance*100).toFixed(1)}%）でオーバー。<br>
-        → 資金を増やすか、損切り幅の狭い場面を待つ。</div>`;
-    }
-  }else{
-    lotbox=`<div class="lotbox">💴 上の「資金(円)」を入れると、損失が資金の${riskPct}%になる<b>推奨ロット</b>を自動計算します。</div>`;
-  }
-
   return head+`<span class="sc">${dname}</span></div>
     ${headLine}
-    <div class="howto">
-            <div class="howto-tp">利確 <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip＝1万通貨で+${pipYen(symbol,tpp)}）</div>
-      <div class="howto-sl">損切 <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip＝1万通貨で-${pipYen(symbol,slp)}）</div></div>
-    ${lotbox}
-    <div class="fnote" style="margin-top:6px;color:var(--accent);">※値幅は概算（安全側に広め）。正確な値幅と勝率は設定でAPIキーを入れると出ます。</div>
-    ${direction===0?`<div class="fnote"></div>`:""}
+    ${orderSheet(symbol, dd, tp, sl, tpp, slp, dec)}
+    <div class="fnote" style="margin-top:6px;">※値幅は概算（安全側に広め）。正確な値幅と過去の勝率は、⚙設定でAPIキーを入れると出ます。</div>
     </div>`;
 }
 
@@ -729,9 +721,9 @@ async function render(){
         ${direction!==0&&s8!=null?`<div class="score">${timing}</div>`:''}
       </div>
       ${override}
-      ${planHtml}
       ${eventBlock()}
       ${warning?`<div class="warn">⚠ ${warning}</div>`:''}
+      ${planHtml}
       <details class="card">
         <summary>なぜ「${label}」？（根拠を見る）</summary>
         <div style="margin-top:8px;">${panels}</div>
