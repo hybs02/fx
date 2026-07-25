@@ -90,6 +90,13 @@
   .gate-ok{color:var(--buy); font-weight:700;}
   .gate-no{color:var(--sell); font-weight:700;}
   .fnote{font-size:11px; color:var(--sub); line-height:1.6; margin-top:4px;}
+  .grp{font-size:11px; color:var(--sub); font-weight:700; margin:10px 0 2px;
+    padding-bottom:3px; border-bottom:1px solid var(--line);}
+  .pt{flex:0 0 30px; text-align:right; font-weight:800; font-size:13px; color:var(--sub);}
+  .p-plus{color:var(--buy);} .p-minus{color:var(--sell);}
+  .total{margin-top:10px; padding:9px 10px; background:#0c111c; border:1px solid var(--line);
+    border-radius:10px; font-size:12.5px; text-align:center;}
+  .total b{font-size:16px; color:var(--accent);}
   .howto{margin-top:10px; background:#0c111c; border:1px solid var(--line); border-radius:10px; padding:10px 12px;}
   .howto-t{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:6px;}
   .howto-s{font-size:12px; line-height:1.7; margin:2px 0;}
@@ -192,6 +199,11 @@ function yenPerPip(symbol){
   if(r) return {v:r, exact:true};        // 1万通貨×0.0001=1決済通貨 → r円
   return {v:q==="USD"?150:190, exact:false};
 }
+// pipを「1万通貨あたり何円か」に直す。pipのままだと初心者に金額が伝わらない
+function pipYen(symbol, pips){
+  const v = yenPerPip(symbol).v;
+  return "¥" + Math.round(pips * v).toLocaleString();
+}
 // 損失が資金のrisk%になる推奨ロット(万通貨)
 function calcLot(symbol, slPips){
   if(!(balance>0) || !(slPips>0)) return null;
@@ -253,31 +265,39 @@ function resample(closes, step){
 // RSI極値=±3, ボリンジャー=±2（逆張り系が利益源）／ MACD=±1, MAクロス=±1（控えめ）
 // 25MA位置は単体で優位性なし → 参考表示のみ（スコア加算しない）
 const ENTRY_GATE = 3;   // 日足スコアがこの値以上で方向を確定（=検証したエントリー条件）
+// 各行 = [向き, 平易な名前, 説明, 点数, 役割]
+//   役割 main=判定の中心 / sub=補助 / ref=点数に入れない参考
+// 専門用語は括弧内に併記するだけにして、主役・脇役を明示する。
+// （「買い2つ・売り2つなのに結論が売り」に見える混乱を防ぐため）
 function analyze(closes, price){
   let score=0; const lines=[];
-  const s5=sma(closes,5), s25=sma(closes,25);
-  if(s5&&s25){
-    if(s5>s25){score++; lines.push(["BUY","移動平均(5/25)","ゴールデンクロス側 → 上昇寄り"]);}
-    else{score--; lines.push(["SELL","移動平均(5/25)","デッドクロス側 → 下降寄り"]);}
-    const dp=(price-s25)/s25*100; const side=price>s25?"上":"下";
-    lines.push(["NEU","25MAとの位置",`価格が25MAの${side} (${dp>=0?'+':''}${dp.toFixed(2)}%)・参考`]);
-  }
   const r=rsi(closes,14);
   if(r!=null){
-    if(r<=30){score+=3; lines.push(["BUY","RSI(14)",`${r.toFixed(0)} 売られすぎ → 反発の買い場【主力】`]);}
-    else if(r>=70){score-=3; lines.push(["SELL","RSI(14)",`${r.toFixed(0)} 買われすぎ → 反落の売り場【主力】`]);}
-    else{const t=r>55?"やや強":(r<45?"やや弱":"中立"); lines.push(["NEU","RSI(14)",`${r.toFixed(0)} ${t}（極値=30以下/70以上を待つ）`]);}
-  }
-  const mc=macd(closes);
-  if(mc){
-    if(mc.m>mc.s){score++; lines.push(["BUY","MACD","買いシグナル(シグナル上)"]);}
-    else{score--; lines.push(["SELL","MACD","売りシグナル(シグナル下)"]);}
+    if(r<=30){score+=3; lines.push(["BUY","行きすぎ具合",`${r.toFixed(0)} 下がりすぎ → 反発を狙う`,+3,"main"]);}
+    else if(r>=70){score-=3; lines.push(["SELL","行きすぎ具合",`${r.toFixed(0)} 上がりすぎ → 反落を狙う`,-3,"main"]);}
+    else{const t=r>55?"やや高い":(r<45?"やや低い":"まん中");
+      lines.push(["NEU","行きすぎ具合",`${r.toFixed(0)} ${t}（30以下か70以上で点が入る）`,0,"main"]);}
   }
   const bb=bollinger(closes);
   if(bb){
-    if(price<=bb.low){score+=2; lines.push(["BUY","ボリンジャー","下限タッチ → 反発の買い場【主力】"]);}
-    else if(price>=bb.up){score-=2; lines.push(["SELL","ボリンジャー","上限タッチ → 反落の売り場【主力】"]);}
-    else{const pos=(price-bb.low)/(bb.up-bb.low)*100; lines.push(["NEU","ボリンジャー",`バンド内 (下から${pos.toFixed(0)}%)`]);}
+    if(price<=bb.low){score+=2; lines.push(["BUY","値幅の端","いつもの値幅の下端 → 反発を狙う",+2,"main"]);}
+    else if(price>=bb.up){score-=2; lines.push(["SELL","値幅の端","いつもの値幅の上端 → 反落を狙う",-2,"main"]);}
+    else{const pos=(price-bb.low)/(bb.up-bb.low)*100;
+      lines.push(["NEU","値幅の端",`まん中あたり（下から${pos.toFixed(0)}%）`,0,"main"]);}
+  }
+  const s5=sma(closes,5), s25=sma(closes,25);
+  if(s5&&s25){
+    if(s5>s25){score++; lines.push(["BUY","トレンドの向き","短期の平均が長期の上 → 上昇寄り",+1,"sub"]);}
+    else{score--; lines.push(["SELL","トレンドの向き","短期の平均が長期の下 → 下降寄り",-1,"sub"]);}
+  }
+  const mc=macd(closes);
+  if(mc){
+    if(mc.m>mc.s){score++; lines.push(["BUY","勢いの向き","上向きに転じている",+1,"sub"]);}
+    else{score--; lines.push(["SELL","勢いの向き","下向きに転じている",-1,"sub"]);}
+  }
+  if(s5&&s25){
+    const dp=(price-s25)/s25*100; const side=price>s25?"上":"下";
+    lines.push(["NEU","平均値との差",`いまの値は25日平均の${side} (${dp>=0?'+':''}${dp.toFixed(2)}%)`,0,"ref"]);
   }
   return {score, lines};
 }
@@ -449,10 +469,29 @@ function drawChart(closes){
 // ===== 1つの時間軸ぶんのHTML =====
 function tfBlock(title, score, lines){
   const tagCls={BUY:"t-buy",SELL:"t-sell",NEU:"t-neu"}, tagTxt={BUY:"買い",SELL:"売り",NEU:"中立"};
-  const rows=lines.map(l=>`<div class="row"><div class="tag ${tagCls[l[0]]}">${tagTxt[l[0]]}</div>
-    <div class="name">${l[1]}</div><div class="msg">${l[2]}</div></div>`).join("");
-  return `<div class="card"><div class="tf-title">${title}
-    <span class="sc">スコア ${score>=0?'+':''}${score}</span></div>${rows}</div>`;
+  const row=l=>{
+    const p=l[3]||0;
+    const pt = l[4]==="ref" ? "" :
+      `<div class="pt ${p>0?'p-plus':(p<0?'p-minus':'')}">${p>0?'+':''}${p||0}</div>`;
+    return `<div class="row"><div class="tag ${tagCls[l[0]]}">${tagTxt[l[0]]}</div>
+      <div class="name">${l[1]}</div><div class="msg">${l[2]}</div>${pt}</div>`;
+  };
+  const grp=(role)=>lines.filter(l=>(l[4]||"sub")===role).map(row).join("");
+  const head=t=>`<div class="grp">${t}</div>`;
+  const main=grp("main"), sub=grp("sub"), ref=grp("ref");
+  // 合計が同じでも「主役が売り・脇役が買い」の内訳が見えないと納得できないため、
+  // 役割ごとに区切って点数を並べる
+  const total = `<div class="total">合計 <b>${score>=0?'+':''}${score}</b> 点
+    　→　${score>=ENTRY_GATE?'<span style="color:var(--buy)">+3以上なので買いサイン</span>'
+        :(score<=-ENTRY_GATE?'<span style="color:var(--sell)">-3以下なので売りサイン</span>'
+        :'±3に届かないので様子見')}</div>`;
+  return `<div class="card"><div class="tf-title">${title}</div>
+    ${main?head("主役（この2つで判定が決まります）")+main:""}
+    ${sub?head("脇役（少しだけ効きます）")+sub:""}
+    ${total}
+    ${ref?head("参考（点数に入れません）")+ref:""}
+    <div class="fnote">主役が大きく動いた時だけサインが出ます。
+      脇役が逆を向いていても、主役が強ければサインは出ます。</div></div>`;
 }
 // 重要イベント接近の警告バナー（当日・前日は赤、それ以外は黄）
 function eventBlock(){
@@ -507,8 +546,8 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
        <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
 
   const tpbox = `<div class="howto">
-            <div class="howto-tp">利確 <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
-      <div class="howto-sl">損切 <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）</div></div>`;
+            <div class="howto-tp">利確 <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip＝1万通貨で+${pipYen(symbol,tpp)}）</div>
+      <div class="howto-sl">損切 <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip＝1万通貨で-${pipYen(symbol,slp)}）</div></div>`;
 
   // 推奨ロット（資金管理）
   let lotbox;
@@ -555,8 +594,8 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
         <div class="howto-s"><b>①新規注文</b>：いまの値で<b>「${dname}」</b>でエントリー</div>
         <div class="howto-s"><b>②「OCO注文」で利確と損切りを同時に置く</b><br>
           <span class="ex" style="color:var(--sub)">※片方が成立したら、もう片方は自動でキャンセル。</span></div>
-        <div class="howto-tp">利確（指値） → <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
-        <div class="howto-sl">損切り（逆指値） → <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）【最重要】</div>
+        <div class="howto-tp">利確（指値） → <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip＝1万通貨で+${pipYen(symbol,tpp)}）</div>
+        <div class="howto-sl">損切り（逆指値） → <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip＝1万通貨で-${pipYen(symbol,slp)}）【最重要】</div>
         <div class="howto-s">③あとは自動決済。見ていなくてOK。</div>
       </div>`;
   }else if(real){
@@ -615,8 +654,8 @@ function planBlockNoKey(symbol, price, direction, dispDir, closes){
   return head+`<span class="sc">${dname}</span></div>
     ${headLine}
     <div class="howto">
-            <div class="howto-tp">利確 <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
-      <div class="howto-sl">損切 <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）</div></div>
+            <div class="howto-tp">利確 <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip＝1万通貨で+${pipYen(symbol,tpp)}）</div>
+      <div class="howto-sl">損切 <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip＝1万通貨で-${pipYen(symbol,slp)}）</div></div>
     ${lotbox}
     <div class="fnote" style="margin-top:6px;color:var(--accent);">※値幅は概算（安全側に広め）。正確な値幅と勝率は設定でAPIキーを入れると出ます。</div>
     ${direction===0?`<div class="fnote"></div>`:""}
@@ -643,16 +682,15 @@ async function render(){
       price=h4[h4.length-1]; chartData=h4;
       const A=analyze(d,price), B=analyze(h8,price), C=analyze(h4,price);
       dailyScore=A.score; s8=B.score; s4=C.score;
-      panels = tfBlock("日足（判定の主軸）",A.score,A.lines)
-             + tfBlock("8時間足（タイミング）",B.score,B.lines)
-             + tfBlock("4時間足（タイミング）",C.score,C.lines);
+      panels = tfBlock("1日ごとの動き（ここで買う・売るを決めます）",A.score,A.lines)
+             + tfBlock("8時間ごとの動き（入る時期の確認）",B.score,B.lines)
+             + tfBlock("4時間ごとの動き（入る時期の確認）",C.score,C.lines);
     }else{
       const d=await fetchFrankfurter(base,quote);
       price=d[d.length-1]; chartData=d;
       const A=analyze(d,price); dailyScore=A.score;
-      panels = `<div class="banner">いまは<b>日足のみ</b>です。無料APIキーを入れると
-        <b>8h・4h（タイミング）＋過去勝率・利確損切り</b>が使えます。</div>`
-        + tfBlock("日足（判定の主軸・ECB公示）",A.score,A.lines);
+      panels = `<div class="banner">いま見ているのは<b>1日ごとの動き</b>だけです。設定でAPIキーを入れると、より短い時間の動きと<b>過去の勝率</b>も見られます。</div>`
+        + tfBlock("1日ごとの動き（ここで買う・売るを決めます）",A.score,A.lines);
     }
 
     // 判定は日足を主軸に（過去検証したのは日足のエントリーのため）
@@ -687,6 +725,7 @@ async function render(){
       <div class="verdict v-${cls}">
         <div style="font-size:13px;color:var(--sub);">${symbol}　<b style="color:var(--text);font-size:16px;">${price.toFixed(price>50?2:4)}</b></div>
         <div class="label">${label}</div><div class="stars">${stars}</div>
+        <div class="score">★の数＝サインの強さ（★4以上で「入っていい」合図）</div>
         ${direction!==0&&s8!=null?`<div class="score">${timing}</div>`:''}
       </div>
       ${override}
