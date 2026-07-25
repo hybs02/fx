@@ -107,41 +107,35 @@
 </head>
 <body>
   <h1>FX シグナル判定</h1>
-  <div class="sub">日足 ＋ 8時間足 ＋ 4時間足 のマルチタイムフレーム判定</div>
-
-  <div class="keybox">
-    <input id="key" type="text" placeholder="Twelve Data の無料APIキーを貼り付け" autocomplete="off">
-    <button id="saveKey">保存</button>
-  </div>
-  <details>
-    <summary>無料APIキーの取り方（2分・8h/4hに必要）</summary>
-    <ol>
-      <li><a href="https://twelvedata.com/register" target="_blank">twelvedata.com/register</a> でメール登録（無料）</li>
-      <li>ログイン後の画面に出る「API Key」をコピー</li>
-      <li>上の欄に貼って「保存」を押す（次回から自動で記憶）</li>
-    </ol>
-    ※無料枠は1日800回・1分8回まで。個人利用なら十分です。<br>
-    ※キーはこの端末のブラウザ内だけに保存され、外部には送られません。
-  </details>
-
-  <div class="keybox">
-    <input id="bal" type="text" inputmode="numeric" placeholder="資金(円) 例: 500000" autocomplete="off">
-    <select id="risk">
-      <option value="1">リスク1%</option>
-      <option value="2" selected>リスク2%</option>
-      <option value="3">リスク3%</option>
-      <option value="5">リスク5%</option>
-    </select>
-  </div>
-  <div class="sub" style="margin:-6px 0 10px;">↑資金を入れると、損失が資金の指定%になる<b style="color:var(--accent)">推奨ロット</b>を自動計算します</div>
 
   <div class="pairs" id="pairs"></div>
   <button class="reload" id="reload">↻ 更新する</button>
-  <button class="reload scanbtn" id="scan">🔍 全ペアを一括チェック（キー不要）</button>
+  <button class="reload scanbtn" id="scan">🔍 全ペアを一括チェック</button>
 
   <div id="out"><div class="loading">通貨ペアを選んでください</div></div>
 
   <div class="card"><div class="hint" id="hint"></div></div>
+
+  <details class="card">
+    <summary>⚙ 設定（資金・APIキー）</summary>
+    <div class="keybox" style="margin-top:8px;">
+      <input id="bal" type="text" inputmode="numeric" placeholder="資金(円) 例: 500000" autocomplete="off">
+      <select id="risk">
+        <option value="1">リスク1%</option>
+        <option value="2" selected>リスク2%</option>
+        <option value="3">リスク3%</option>
+        <option value="5">リスク5%</option>
+      </select>
+    </div>
+    <div class="fnote">資金を入れると<b style="color:var(--accent)">推奨ロット</b>を計算します。</div>
+    <div class="keybox" style="margin-top:10px;">
+      <input id="key" type="text" placeholder="APIキー（任意）" autocomplete="off">
+      <button id="saveKey">保存</button>
+    </div>
+    <div class="fnote">キーを入れると<b>8h/4h足</b>と<b>過去の勝率</b>が使えます。
+      <a href="https://twelvedata.com/register" target="_blank">twelvedata.com</a> で無料登録し、
+      API Keyを貼って保存（この端末内だけに保存されます）。</div>
+  </details>
 
   <details class="glo">
     <summary>📖 用語の意味（タップで開く）</summary>
@@ -164,10 +158,7 @@
     </dl>
   </details>
 
-  <div class="foot">
-    データ: Twelve Data（キー入力時・8h/4h対応）／ ECB日次（キー無し時・日足のみ）。<br>
-    ※このサインは参考です。必ず損切りを置き、1回の損失は資金の2%までに。最終判断は自己責任で。
-  </div>
+  <div class="foot">※参考情報です。最終判断は自己責任で。</div>
 
 <script>
 // ===== 対応ペア =====
@@ -472,35 +463,25 @@ function eventBlock(){
     return `<div class="fnote" style="color:var(--text)">・${when}　${e.name}<br>
       <span style="color:var(--sub)">　${e.note}</span></div>`;
   }).join("");
-  const urgent = ev[0].days<=1;
+  const e0=ev[0], urgent = e0.days<=1;
+  const when0 = e0.days===0?"本日" : (e0.days===1?"明日" : `${e0.days}日後`);
   const cls = urgent? "warn" : "banner";
-  return `<div class="${cls}">${urgent?"⚠":"📅"} <b>値が飛びやすい重要イベントが近づいています</b>
-    ${rows}
-    <div class="fnote" style="margin-top:4px;">発表の直前直後は新規エントリーを避け、
-    ポジションがある時は損切り注文を必ず置いてください。</div></div>`;
+  return `<details class="${cls}"><summary style="color:inherit;">
+    ${urgent?"⚠":"📅"} ${when0} ${e0.name}${ev.length>1?` ほか${ev.length-1}件`:""} → 荒れやすい</summary>
+    <div style="margin-top:6px;">${rows}</div></details>`;
 }
 // ファンダ情勢パネル
-function fundBlock(tilt, notes, warning){
-  const tagCls={1:"t-buy","-1":"t-sell",0:"t-neu"}, tagTxt={1:"買い寄り","-1":"売り寄り",0:"中立"};
-  const warnHtml = warning? `<div class="warn">⚠ ${warning}</div>` : "";
-  return warnHtml + `<div class="card"><div class="tf-title">ファンダ（社会・金融・政治情勢／参考）
-    <span class="sc">傾き ${tilt>=0?'+':''}${tilt}</span></div>
-    <div class="row"><div class="tag ${tagCls[tilt]}">${tagTxt[tilt]}</div>
-      <div class="msg">情勢の方向（参考・売買判定には自動加算しません）</div></div>
-    ${notes.map(n=>`<div class="fnote">・${n}</div>`).join("")}
-    <details style="margin:8px 0 0;">
-      <summary style="font-size:12px;">いまの相場の全体像（タップで開く）</summary>
-      <div class="fnote" style="color:var(--text);margin-top:4px;">${FUNDAMENTALS.summary}</div>
-      <div class="fnote" style="margin-top:6px;">${FUNDAMENTALS.eventsNote}</div>
-    </details>
-    <div class="fnote" style="margin-top:6px;color:var(--sub);">情勢データ更新日: ${FUNDAMENTALS.updated}</div>
-    </div>`;
+function fundBlock(tilt, notes){
+  return `<div class="fnote" style="color:var(--text);">${FUNDAMENTALS.summary}</div>
+    ${notes.map(n=>`<div class="fnote" style="margin-top:4px;">・${n}</div>`).join("")}
+    <div class="fnote" style="margin-top:8px;color:var(--sub);">
+      ※相場の空気であって、売買判定には足していません（${FUNDAMENTALS.updated} 時点）</div>`;
 }
 // 売買プラン（利確損切り・過去勝率）パネル
 // ★サインの有無に関わらず、利確/損切りの目安と 買い・売り両方の勝率を常に表示★
 // dispDir = 表示に使う方向（実サインがあればそれ、無ければ相場の傾き）
 function planBlock(symbol, price, direction, dispDir, dailyBars){
-  const head = `<div class="card"><div class="tf-title">売買プラン（日足・SL/TP=2.0/2.0・5年検証）`;
+  const head = `<div class="card"><div class="tf-title">売買プラン`;
   const a = atr(dailyBars);
   if(!a) return head+`</div><div class="fnote">過去検証データの取得に失敗。更新を。</div></div>`;
   const pip = symbol.endsWith("JPY")?0.01:0.0001;
@@ -521,14 +502,13 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
   const wr = s => s ? `勝率<b>${s.wr.toFixed(0)}%</b>（${s.n}回）/ 期待値${s.exp>=0?'+':''}${s.exp.toFixed(2)}% / PF${fnum(s.pf)}` : "サンプル不足";
 
   const headLine = real
-    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】サイン点灯　推奨エントリー ${price.toFixed(dec)}</span></div>`
+    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】サイン点灯　入る ${price.toFixed(dec)}</span></div>`
     : `<div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません（様子見）</b><br>
        <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
 
   const tpbox = `<div class="howto">
-      <div class="fnote" style="color:var(--sub)">ここまで来たら決済（OCOで同時に置く）</div>
-      <div class="howto-tp">● 利確の目安 → <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
-      <div class="howto-sl">● 損切りの目安 → <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）←必ず置く</div></div>`;
+            <div class="howto-tp">利確 <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
+      <div class="howto-sl">損切 <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）</div></div>`;
 
   // 推奨ロット（資金管理）
   let lotbox;
@@ -582,10 +562,10 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
   }else if(real){
     howto=`<div class="fnote" style="margin-top:8px;color:var(--sell);">→ この方向は過去成績が振るわず（負け越し）。見送り推奨。</div>`;
   }else{
-    howto=`<div class="fnote" style="margin-top:8px;color:var(--sub);">※上は参考です。日足スコアが ±${ENTRY_GATE} に達したら正式サイン。焦らずサインを待つのがコツ。</div>`;
+    howto=`<div class="fnote" style="margin-top:8px;color:var(--sub);">焦らずサインを待つのがコツ。</div>`;
   }
 
-  return head+`<span class="sc">${dname} / ATR≈${(a/pip).toFixed(0)}pip</span></div>
+  return head+`<span class="sc">${dname}</span></div>
     ${headLine}
     ${tpbox}
     ${lotbox}
@@ -602,7 +582,7 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
 // 高値・安値（OHLC）が必要なため、ここでは出さない（推測値は出さない方針）。
 function planBlockNoKey(symbol, price, direction, dispDir, closes){
   const a=approxAtrFromCloses(closes);
-  const head=`<div class="card"><div class="tf-title">売買プラン（日足・SL/TP=2.0/2.0）`;
+  const head=`<div class="card"><div class="tf-title">売買プラン`;
   if(!a) return head+`</div><div class="fnote">データ不足で計算できません。</div></div>`;
   const pip = symbol.endsWith("JPY")?0.01:0.0001;
   const dec = price>50?3:5;
@@ -611,7 +591,7 @@ function planBlockNoKey(symbol, price, direction, dispDir, closes){
   const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
 
   const headLine = direction!==0
-    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】サイン点灯　推奨エントリー ${price.toFixed(dec)}</span></div>`
+    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】サイン点灯　入る ${price.toFixed(dec)}</span></div>`
     : `<div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません（様子見）</b><br>
        <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
 
@@ -632,16 +612,14 @@ function planBlockNoKey(symbol, price, direction, dispDir, closes){
     lotbox=`<div class="lotbox">💴 上の「資金(円)」を入れると、損失が資金の${riskPct}%になる<b>推奨ロット</b>を自動計算します。</div>`;
   }
 
-  return head+`<span class="sc">${dname} / ATR概算≈${(a/pip).toFixed(0)}pip</span></div>
+  return head+`<span class="sc">${dname}</span></div>
     ${headLine}
     <div class="howto">
-      <div class="fnote" style="color:var(--sub)">ここまで来たら決済（OCOで同時に置く）</div>
-      <div class="howto-tp">● 利確の目安 → <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
-      <div class="howto-sl">● 損切りの目安 → <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）←必ず置く</div></div>
+            <div class="howto-tp">利確 <b>${tp.toFixed(dec)}</b>（+${tpp.toFixed(0)}pip）</div>
+      <div class="howto-sl">損切 <b>${sl.toFixed(dec)}</b>（-${slp.toFixed(0)}pip）</div></div>
     ${lotbox}
-    <div class="fnote" style="margin-top:6px;color:var(--accent);">※値幅は終値データからの<b>概算</b>です（安全側に広めを採用）。
-      正確な値幅と<b>過去の勝率</b>を見るには、上の無料APIキーを入れてください。</div>
-    ${direction===0?`<div class="fnote">※上は参考です。日足スコアが ±${ENTRY_GATE} に達したら正式サイン。</div>`:""}
+    <div class="fnote" style="margin-top:6px;color:var(--accent);">※値幅は概算（安全側に広め）。正確な値幅と勝率は設定でAPIキーを入れると出ます。</div>
+    ${direction===0?`<div class="fnote"></div>`:""}
     </div>`;
 }
 
@@ -706,25 +684,33 @@ async function render(){
       : planBlockNoKey(symbol,price,direction,dispDir,chartData);
 
     out.innerHTML=`
-      <div class="card">
-        <div class="pair-name">${symbol}</div>
-        <div class="price">${price.toFixed(price>50?2:4)}</div>
-        <canvas id="chart"></canvas>
+      <div class="verdict v-${cls}">
+        <div style="font-size:13px;color:var(--sub);">${symbol}　<b style="color:var(--text);font-size:16px;">${price.toFixed(price>50?2:4)}</b></div>
+        <div class="label">${label}</div><div class="stars">${stars}</div>
+        ${direction!==0&&s8!=null?`<div class="score">${timing}</div>`:''}
+      </div>
+      ${override}
+      ${planHtml}
+      ${eventBlock()}
+      ${warning?`<div class="warn">⚠ ${warning}</div>`:''}
+      <details class="card">
+        <summary>なぜ「${label}」？（根拠を見る）</summary>
+        <div style="margin-top:8px;">${panels}</div>
+      </details>
+      <details class="card">
+        <summary>いまの相場の状況（ファンダ）</summary>
+        <div style="margin-top:8px;">${fundBlock(tilt, notes)}</div>
+      </details>
+      <details class="card" id="chartBox">
+        <summary>チャート</summary>
+        <canvas id="chart" style="margin-top:8px;"></canvas>
         <div style="font-size:10px;color:var(--sub);text-align:center;">
           <span style="color:#5b8cff;">━</span> 価格
           <span style="color:#ffcf4a;">━</span> 25移動平均（${apiKey?'4時間足':'日足'}）</div>
-      </div>
-      <div class="verdict v-${cls}">
-        <div class="label">${label}</div><div class="stars">${stars}</div>
-        <div class="score">日足スコア ${dailyScore>=0?'+':''}${dailyScore}（エントリー基準 ±${ENTRY_GATE}）${s8!=null?` ・ 8h${s8>=0?'+':''}${s8}/4h${s4>=0?'+':''}${s4}＝タイミング`:''}</div>
-        ${direction!==0?`<div class="score" style="margin-top:2px;">${timing}</div>`:''}
-      </div>
-      ${override}
-      ${eventBlock()}
-      ${fundBlock(tilt, notes, warning)}
-      ${planHtml}
-      ${panels}`;
-    drawChart(chartData);
+      </details>`;
+    // チャートは折りたたみの中。閉じたままだと幅0で描けないので、開いた時に描く
+    const cb=document.getElementById("chartBox");
+    if(cb) cb.addEventListener("toggle",()=>{ if(cb.open) drawChart(chartData); });
     setHint(dailyScore, direction);
   }catch(e){
     out.innerHTML=`<div class="card"><div class="err">取得に失敗：${e.message}<br>
@@ -734,12 +720,9 @@ async function render(){
 }
 function setHint(dailyScore, direction){
   let h;
-  if(direction===1) h=`<b>買いサイン</b>（日足が基準到達）。8h/4hの向きが揃う押し目で。必ず<b>損切り</b>を置く。`;
-  else if(direction===-1) h=`<b>売りサイン</b>（日足が基準到達）。8h/4hの向きが揃う戻りで。必ず<b>損切り</b>を置く。`;
-  else h=`日足に強いサイン（RSIの極値など）が出ていません。無理に入らず<b>様子見</b>が正解。`;
-  document.getElementById("hint").innerHTML=
-    `このツールは<b>RSI・ボリンジャーの「行きすぎ→反発」を主役</b>に、過去5年で実際に勝てた条件だけを拾います。
-     サインが出る回数は少なめですが、その分<b>質の高いサインだけ</b>に絞っています。<br><br>${h}`;
+  if(direction!==0) h=`サインが出たら<b>必ず損切り注文を置く</b>（利確と同時＝OCO）。1回の損失は資金の2%までに。`;
+  else h=`いまは強いサインなし。<b>入らないのが正解</b>です。サインは月に数回しか出ません。`;
+  document.getElementById("hint").innerHTML=h;
 }
 
 // ===== 全ペア一括スキャン（frankfurter・キー不要・日足のみ）=====
