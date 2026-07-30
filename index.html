@@ -579,16 +579,27 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
     howto=`<div class="fnote" style="margin-top:8px;color:var(--sub);">焦らずサインを待つのがコツです。</div>`;
   }
 
-  return head+`<span class="sc">${dname}</span></div>
-    ${headLine}
-    ${tpbox}
-    ${lotbox}
-    <div class="fnote" style="color:var(--accent);margin-top:6px;">◆ 過去の勝率（この損切り/利確で）</div>
+  // 勝率などの細かい数字は、実際に入る時以外は畳んでおく（画面を短く保つ）
+  const stats = `<div class="fnote" style="color:var(--accent);margin-top:6px;">◆ 過去の勝率（この損切り/利確で）</div>
     ${rateRow(1,"買い")}
     ${rateRow(-1,"売り")}
     <div class="fnote">※本番想定＝設定選びに使っていない直近期間。ここが良いほど信頼できます。</div>
-    ${evalTxt}
-    ${howto}</div>`;
+    ${evalTxt}`;
+
+  if(!real){
+    return head+`<span class="sc">様子見</span></div>
+      <div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません</b><br>
+        <span class="fnote">→ このペアは<b style="color:var(--accent)">何もしないのが正解</b>です。</span></div>
+      <details style="margin:8px 0 0;"><summary>参考：もし今『${dname}』で入るなら</summary>
+        ${tpbox}${stats}</details>
+      </div>`;
+  }
+  return head+`<span class="sc">${dname}</span></div>
+    ${headLine}
+    ${tpbox}
+    ${howto}
+    <details style="margin:8px 0 0;"><summary>過去の勝率を見る</summary>${stats}</details>
+    </div>`;
 }
 
 // APIキー無しの時の売買プラン（終値データのみ）。
@@ -642,15 +653,20 @@ function planBlockNoKey(symbol, price, direction, dispDir, closes){
   const sl=price-dd*2.0*a, tp=price+dd*2.0*a;
   const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
 
-  const headLine = direction!==0
-    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">いま <b>${price.toFixed(dec)}</b> で「${dname}」が出ています</span></div>`
-    : `<div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません（様子見）</b><br>
-       <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
-
+  // サインが無い日に注文手順を全部出すと画面が埋まって読みにくい。
+  // 「何もしなくていい」とだけ伝え、参考値は畳んでおく。
+  if(direction===0){
+    return head+`<span class="sc">様子見</span></div>
+      <div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません</b><br>
+        <span class="fnote">→ このペアは<b style="color:var(--accent)">何もしないのが正解</b>です。</span></div>
+      <details style="margin:8px 0 0;"><summary>参考：もし今『${dname}』で入るなら</summary>
+        ${orderSheet(symbol, dd, tp, sl, tpp, slp, dec)}</details>
+      </div>`;
+  }
   return head+`<span class="sc">${dname}</span></div>
-    ${headLine}
+    <div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">いま <b>${price.toFixed(dec)}</b> で「${dname}」が出ています</span></div>
     ${orderSheet(symbol, dd, tp, sl, tpp, slp, dec)}
-    <div class="fnote" style="margin-top:6px;">※値幅は概算（安全側に広め）。正確な値幅と過去の勝率は、⚙設定でAPIキーを入れると出ます。</div>
+    <div class="fnote" style="margin-top:6px;">※値幅は概算。正確な値幅と過去の勝率は⚙設定でAPIキーを入れると出ます。</div>
     </div>`;
 }
 
