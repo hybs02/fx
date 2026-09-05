@@ -100,6 +100,11 @@
   .howto{margin-top:10px; background:#0c111c; border:1px solid var(--line); border-radius:10px; padding:10px 12px;}
   .howto-t{font-size:12.5px; font-weight:700; color:var(--accent); margin-bottom:6px;}
   .howto-s{font-size:12px; line-height:1.7; margin:2px 0;}
+  .howto-h{font-size:12px; font-weight:700; color:var(--sub); margin:8px 0 2px; padding-top:6px; border-top:1px dashed var(--line);}
+  .howto-h:first-of-type{border-top:none; padding-top:0; margin-top:2px;}
+  .howto .k{display:inline-block; padding:0 6px; border:1px solid #3a4763; border-radius:6px;
+    background:#151d2e; color:var(--text); font-weight:700; line-height:1.5; white-space:nowrap;}
+  .howto .v{font-weight:800; color:var(--accent);}
   .howto-tp{font-size:12px; line-height:1.6; margin:4px 0; padding:6px 8px; border-radius:8px;
     background:rgba(35,196,131,.14); color:#8ff0c6;}
   .howto-sl{font-size:12px; line-height:1.6; margin:4px 0; padding:6px 8px; border-radius:8px;
@@ -159,9 +164,14 @@
       <dt>pips（ピップス）</dt><dd>為替の最小の値動き単位。円ペアは0.01円＝1pip。<span class="ex">100pips＝1円ぶん。</span></dd>
       <dt>期待値</dt><dd>1回の取引の平均損益。<span class="ex">プラスなら続けるほど有利。マイナスは負け越し。</span></dd>
       <dt>PF（プロフィットファクター）</dt><dd>総利益÷総損失。<span class="ex">1超で勝ち越し。1.3以上が合格基準。</span></dd>
-      <dt>利確（指値）</dt><dd>利益を確定させる決済。狙った値に届いたら自動で売買を閉じる注文。</dd>
-      <dt>損切り（逆指値・ストップ）</dt><dd>損失を限定する決済。逆方向に動いたら自動で閉じる注文。<b>必ず置く。</b></dd>
-      <dt>OCO注文</dt><dd>利確(指値)と損切り(逆指値)を<b>同時に置く</b>注文方法。<span class="ex">どちらかに届いたら自動決済。画面を見続けなくてよい。</span></dd>
+      <dt>利確（指値レート）</dt><dd>利益を確定させる決済。狙った値に届いたら自動で売買を閉じる注文。<span class="ex">DMMアプリの決済OCOでは「指値レート」の欄。</span></dd>
+      <dt>損切り（逆指値レート）</dt><dd>損失を限定する決済。逆方向に動いたら自動で閉じる注文。<b>必ず置く。</b><span class="ex">DMMアプリの決済OCOでは「逆指値レート」の欄。</span></dd>
+      <dt>OCO注文</dt><dd>利確(指値)と損切り(逆指値)を<b>同時に置く</b>注文方法。<span class="ex">DMMアプリでは トレード → ポジション照会 → ポジションをタップ → 注文タイプ「OCO」。どちらかに届いたら自動決済、もう片方は自動で取消。</span></dd>
+      <dt>即時注文</dt><dd>いまのレートですぐ売買する注文（成行）。<span class="ex">DMMアプリの新規注文で注文タイプ「即時」。このツールのサインはこれで入る。</span></dd>
+      <dt>Lot（ロット）</dt><dd>DMMアプリの数量の単位。<b>1Lot＝1万通貨</b>。<span class="ex">ペア名に「ミニ」が付くものだけ1Lot＝1,000通貨。</span></dd>
+      <dt>Ask(買)／Bid(売)</dt><dd>トレード画面に並ぶ2つのレート。買うときはAsk、売るときはBid。<span class="ex">タップすると新規注文画面が開く。</span></dd>
+      <dt>ポジション照会</dt><dd>いま持っている取引（ポジション）の一覧。<span class="ex">ここからポジションをタップして決済注文を出す。</span></dd>
+      <dt>決済可能数量</dt><dd>まだ決済注文を付けていないLot数。<span class="ex">0と出るのは、すでに決済注文（自動の損切など）が付いているから。</span></dd>
     </dl>
   </details>
 
@@ -605,11 +615,20 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
 // APIキー無しの時の売買プラン（終値データのみ）。
 // 利確/損切りの目安と推奨ロットは概算ATRで出す。ただし勝率の検証には
 // 高値・安値（OHLC）が必要なため、ここでは出さない（推測値は出さない方針）。
-// 注文手順シート。「DMMで何をどの順に入力するか」をそのまま書く。
+// 注文手順シート。DMM FX スマホアプリの画面の順番どおりに書く。
+// 出典: 公式クイックガイド（スマホアプリ DMM FX）
+//   新規注文 > 即時注文 : [トレード]→通貨ペア→[Ask(買)]/[Bid(売)]→注文タイプ[即時]
+//                        →[売][買]→注文数量(Lot)→スリッページ→[損切]ON/OFF→[確認画面]→[注文]
+//   決済注文 > OCO注文  : [ポジション照会]→ポジションをタップ→注文タイプ[OCO]
+//                        →注文数量→指値レート→[OCO2入力]→逆指値レート→有効期限→[確認画面]→[注文]
+// 即時注文の[損切]スイッチは OFF にさせる。ON だと[注文設定]の値幅で損切だけが自動発注され、
+// ポジションの決済可能数量が 0 になって OCO（利確＋損切）が置けなくなるため。
 // 金額は【実際に注文する枚数】で出す。1万通貨あたりの数字だけ出すと
 // 推奨ロットと桁が合わず「結局いくら損するのか」が分からなくなるため。
 function orderSheet(symbol, dd, tp, sl, tpp, slp, dec){
   const dname = dd===1 ? "買い" : "売り";
+  const btn   = dd===1 ? "Ask(買)" : "Bid(売)";
+  const bs    = dd===1 ? "買" : "売";
   const vpp = yenPerPip(symbol).v;
   const lc = calcLot(symbol, slp);
   let unit = 1, extra = "";
@@ -620,24 +639,35 @@ function orderSheet(symbol, dd, tp, sl, tpp, slp, dec){
     }else{
       const one = Math.round(slp * vpp);
       extra = `<div class="lotbox" style="border-color:var(--sell);color:#ffb3ba;">
-        ⚠ 資金¥${balance.toLocaleString()}・リスク${riskPct}%だと、最小の1万通貨でも
+        ⚠ 資金¥${balance.toLocaleString()}・リスク${riskPct}%だと、最小の1Lot（1万通貨）でも
         損失¥${one.toLocaleString()}（資金の${(one/balance*100).toFixed(1)}%）で上限を超えます。
         <b>今回は見送る</b>のが安全です。</div>`;
     }
   }else{
     extra = `<div class="fnote" style="color:var(--accent);">
-      ⚙設定で資金を入れると、あなたに合った数量を計算します（下の金額は1万通貨の場合）。</div>`;
+      ⚙設定で資金を入れると、あなたに合ったLot数を計算します（上の金額は1Lot＝1万通貨の場合）。</div>`;
   }
   const tpYen = Math.round(tpp * vpp * unit);
   const slYen = Math.round(slp * vpp * unit);
   const pct = balance>0 ? `（資金の${(slYen/balance*100).toFixed(1)}%）` : "";
+  const K = t => `<span class="k">${t}</span>`;
   return `<div class="howto">
-      <div class="howto-t">DMMでの注文手順</div>
-      <div class="howto-s">① <b>${dname}</b>で新規注文　数量 <b>${unit}万通貨</b></div>
-      <div class="howto-s">② 決済は<b>OCO</b>で、下の2つを同時に出す</div>
-      <div class="howto-tp">利確　<b>${tp.toFixed(dec)}</b>　→ 届いたら <b>+¥${tpYen.toLocaleString()}</b></div>
-      <div class="howto-sl">損切　<b>${sl.toFixed(dec)}</b>　→ 届いたら <b>-¥${slYen.toLocaleString()}</b>　必ず出す</div>
-      <div class="howto-s">③ あとは自動で決済されます。見ていなくてOK。</div>
+      <div class="howto-t">DMM FXアプリでの注文手順（画面の順番どおり）</div>
+      <div class="howto-h">STEP1　新規注文 ＝ いま「${dname}」で入る</div>
+      <div class="howto-s">① 下の ${K("トレード")} → 通貨ペア <b>${symbol}</b> を選ぶ → ${K(btn)} をタップ</div>
+      <div class="howto-s">② 注文タイプ ${K("即時")}／売買 <span class="v">${bs}</span>／注文数量 <span class="v">${unit} Lot</span>（1Lot＝1万通貨）</div>
+      <div class="howto-s">③ スリッページはそのまま／${K("損切")} は <span class="v">OFF</span>（損切はSTEP2で正確な値を入れる）</div>
+      <div class="howto-s">④ ${K("確認画面")} → ${K("注文")}　→ 約定すると「ポジション照会」が開く</div>
+      <div class="howto-h">STEP2　決済注文（OCO）＝ 利確と損切を予約する</div>
+      <div class="howto-s">⑤ ポジション照会で、いま入った <b>${symbol}</b> のポジションをタップ</div>
+      <div class="howto-s">⑥ 注文タイプ ${K("OCO")}／注文数量 <span class="v">${unit} Lot</span>（決済可能数量と同じ）</div>
+      <div class="howto-tp">⑦ 指値レート（利確）に <b>${tp.toFixed(dec)}</b>　→ 届いたら <b>+¥${tpYen.toLocaleString()}</b></div>
+      <div class="howto-s">⑧ ${K("OCO2入力")} をタップ</div>
+      <div class="howto-sl">⑨ 逆指値レート（損切）に <b>${sl.toFixed(dec)}</b>　→ 届いたら <b>-¥${slYen.toLocaleString()}</b>　必ず入れる</div>
+      <div class="howto-s">⑩ 有効期限 ${K("無期限")} → ${K("確認画面")} → ${K("注文")}</div>
+      <div class="howto-s">✔ これで完了。どちらかに届いたら自動で決済され、もう片方は自動で取消。見ていなくてOK。</div>
+      <div class="fnote" style="margin-top:6px;">※⑤で「決済可能数量が0」と出たら、③の損切がONで自動の決済注文が付いています。注文照会でその注文を取消してから⑤へ。<br>
+      ※ペア名に「ミニ」が付くものは1Lot＝1,000通貨なので、Lot数を10倍にしてください。</div>
     </div>
     <div class="lotbox">この取引で失う可能性がある上限は
       <b>¥${slYen.toLocaleString()}</b>${pct}です。</div>${extra}`;
@@ -767,7 +797,7 @@ async function render(){
 }
 function setHint(dailyScore, direction){
   let h;
-  if(direction!==0) h=`サインが出たら<b>必ず損切り注文を置く</b>（利確と同時＝OCO）。1回の損失は資金の2%までに。`;
+  if(direction!==0) h=`新規は「<b>即時</b>」で入り、直後にポジション照会から「<b>OCO</b>」で利確と損切を必ず置く。1回の損失は資金の2%までに。`;
   else h=`いまは強いサインなし。<b>入らないのが正解</b>です。サインは月に数回しか出ません。`;
   document.getElementById("hint").innerHTML=h;
 }
