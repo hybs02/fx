@@ -34,6 +34,9 @@
   .verdict .label{font-size:24px; font-weight:800;}
   .verdict .stars{font-size:22px; letter-spacing:2px;}
   .verdict .score{font-size:12px; opacity:.85; margin-top:4px;}
+  .verdict .chk{margin-top:10px; text-align:left; font-size:12.5px; line-height:1.65; color:var(--text);
+    background:rgba(0,0,0,.28); border-radius:10px; padding:8px 10px;}
+  .chk-ok{color:#8ff0c6;} .chk-ng{color:#ffb3ba; font-weight:700;} .chk-warn{color:var(--accent);}
   .v-buy{background:rgba(35,196,131,.15); border:1px solid var(--buy); color:var(--buy);}
   .v-sell{background:rgba(255,93,108,.15); border:1px solid var(--sell); color:var(--sell);}
   .v-neu{background:rgba(136,150,179,.15); border:1px solid var(--neu); color:var(--neu);}
@@ -373,12 +376,13 @@ function winrateStats(trades, dir){
   return {wr:wins.length/n*100, n, exp, avgWin, avgLoss, pf, payoff};
 }
 // 勝率＋損益バランスから総合評価
+// pass=false（負け越し）だけが最終判断を「見送り」にする。ok=true は合格、その間は△。
 function rateScheme(st){
-  if(st.exp<=0 || st.pf<1.0) return {mark:"SELL", text:"× 非推奨（期待値マイナス＝負け越し）", ok:false};
-  if(st.wr>=WIN_GATE && st.pf>=PF_GATE) return {mark:"BUY", text:"◎ 合格（勝率60%以上＋損益バランス良好）", ok:true};
-  if(st.wr>=WIN_GATE) return {mark:"BUY", text:"○ 勝率は合格だが損益バランスが弱い（負け幅大）", ok:false};
-  if(st.pf>=1.5) return {mark:"NEU", text:"○ 勝率は60%未満だが損益バランス良好・期待値良好", ok:false};
-  return {mark:"NEU", text:"△ 一長一短（基準未達）", ok:false};
+  if(st.exp<=0 || st.pf<1.0) return {mark:"SELL", text:"× 負け越し（期待値マイナス）", ok:false, pass:false};
+  if(st.wr>=WIN_GATE && st.pf>=PF_GATE) return {mark:"BUY", text:"◎ 合格（勝率60%以上＋損益バランス良好）", ok:true, pass:true};
+  if(st.wr>=WIN_GATE) return {mark:"BUY", text:"○ 勝率は合格だが損益バランスが弱い（負け幅大）", ok:false, pass:true};
+  if(st.pf>=1.5) return {mark:"NEU", text:"○ 勝率は60%未満だが損益バランス良好・期待値良好", ok:false, pass:true};
+  return {mark:"NEU", text:"△ 一長一短（基準未達）", ok:false, pass:true};
 }
 
 // ===== ファンダ（社会・金融・政治情勢）2026-07-25時点スナップショット =====
@@ -526,47 +530,98 @@ function fundBlock(tilt, notes){
     <div class="fnote" style="margin-top:8px;color:var(--sub);">
       ※相場の空気であって、売買判定には足していません（${FUNDAMENTALS.updated} 時点）</div>`;
 }
+// ===== 最終判断（ここ1か所で決める）=====
+// 星（日足スコア）・ファンダ警告・過去成績・資金・8h/4hのタイミング・イベントを
+// ここでだけ突き合わせ、「入ってOK／見送り／様子見」を1つに決める。
+// 他の表示はこの結果を映すだけで、独自に「推奨」「見送り」を言わない
+// （以前は星が★4なのに別の場所で見送りと出て、どちらが本当か分からなかった）。
+//   ✖ = 入らない理由。1つでもあれば「見送り」
+//   △ = 入ってもいいが注意。見送りにはしない
+//       （8h/4hやイベントは過去検証に入れていないので、強制すると検証した成績と別物になる）
+function decide(o){
+  const rows=[], ng=[], cautions=[];
+  const rawDir=o.rawDir, dname=rawDir===1?"買い":"売り";
+  const sc=(o.dailyScore>=0?"+":"")+o.dailyScore;
+  if(rawDir===0){
+    return {kind:"WAIT", dir:0, dname:"", head:"様子見（何もしない）",
+      sub:`日足${sc}。サインは±${ENTRY_GATE}以上で点灯`, rows:[], ng:[], cautions:[]};
+  }
+  const add=(st,t)=>{ rows.push({s:st,t}); if(st==="ng") ng.push(t); if(st==="warn") cautions.push(t); };
+  add("ok", `サイン：日足${sc} → ${dname}サイン点灯`);
+  // ファンダ：介入警戒ゾーンでの『買い』だけ止める
+  if(o.warning && rawDir===1) add("ng", "ファンダ：介入警戒ゾーン。いまの『買い』は入らない");
+  else add("ok", "ファンダ：止める材料なし");
+  // 過去成績（この方向・全期間で判定）
+  if(o.st){
+    const f=o.st[rawDir].full;
+    if(!f) add("warn", "過去成績：サンプル不足で判定できない");
+    else{
+      const r=rateScheme(f);
+      const num=`勝率${f.wr.toFixed(0)}%・期待値${f.exp>=0?"+":""}${f.exp.toFixed(2)}%・PF${f.pf===Infinity?"∞":f.pf.toFixed(2)}`;
+      if(!r.pass) add("ng", `過去成績：${dname}は負け越し（${num}）`);
+      else if(r.ok) add("ok", `過去成績：合格（${num}）`);
+      else add("warn", `過去成績：期待値はプラスだが基準未達（${num}）`);
+      if(f.n<10) add("warn", `過去成績：取引回数が${f.n}回と少なく参考程度`);
+    }
+  }else add("warn", "過去成績：未確認（⚙設定でAPIキーを入れると5年分を検証）");
+  // 資金：損切に届いた時の損失が上限%に収まるか
+  if(o.lot){
+    const n=Math.floor(o.lot.lots);
+    if(n<1) add("ng", `資金：最小の1Lotでも損失¥${o.lot.one.toLocaleString()}（資金の${o.lot.pct.toFixed(1)}%）で上限${riskPct}%を超える`);
+    else add("ok", `資金：${n}Lot で損失上限¥${(o.lot.one*n).toLocaleString()}（資金の${(o.lot.pct*n).toFixed(1)}%）`);
+  }else add("warn", "資金：未設定（⚙設定で資金を入れるとLot数と損失額が出る）");
+  // タイミング：8h/4h（方向には使わない）
+  if(o.s8!=null){
+    const tfd=x=> x>=1?1:(x<=-1?-1:0);
+    const c=(tfd(o.s8)===rawDir?1:0)+(tfd(o.s4)===rawDir?1:0);
+    if(c===2) add("ok", "タイミング：8h/4hも同じ向き");
+    else if(c===1) add("ok", "タイミング：8h/4hの片方が同調（まずまず）");
+    else add("warn", "タイミング：8h/4hがまだ逆。押し目／戻りを待って入るとなお良い");
+  }
+  // イベント：当日・前日
+  const ev=upcomingEvents(1);
+  if(ev.length) add("warn", `イベント：${ev[0].days===0?"本日":"明日"} ${ev[0].name}。発表の直前直後は入らない`);
+  const kind = ng.length ? "NO" : "GO";
+  return {kind, dir:rawDir, dname,
+    head: kind==="GO" ? `${dname}で入ってOK` : `${dname}サインだが見送り`,
+    sub:  kind==="GO" ? (cautions.length ? "△の注意点を見てから入る" : "止める理由なし")
+                      : `理由：${ng.map(t=>t.split("：")[0]).join("・")}`,
+    rows, ng, cautions};
+}
+// 過去成績（買い・売り両方、全期間＋本番想定）。最終判断と売買プランの両方で使うので1回だけ計算する
+function pastStats(dailyBars){
+  const btFull=backtest(dailyBars,ENTRY_GATE,2.0,2.0);
+  const split=Math.floor(dailyBars.length*0.7);
+  const btOos=backtest(dailyBars.slice(split),ENTRY_GATE,2.0,2.0);
+  return {1:{full:winrateStats(btFull,1), oos:winrateStats(btOos,1)},
+          "-1":{full:winrateStats(btFull,-1), oos:winrateStats(btOos,-1)}};
+}
 // 売買プラン（利確損切り・過去勝率）パネル
 // ★サインの有無に関わらず、利確/損切りの目安と 買い・売り両方の勝率を常に表示★
+// dec = decide() の最終判断。ここでは独自に推奨/見送りを決めず、dec を映すだけ
 // dispDir = 表示に使う方向（実サインがあればそれ、無ければ相場の傾き）
-function planBlock(symbol, price, direction, dispDir, dailyBars){
+function planBlock(symbol, price, dec, dispDir, dailyBars, st){
   const head = `<div class="card"><div class="tf-title">売買プラン`;
   const a = atr(dailyBars);
   if(!a) return head+`</div><div class="fnote">過去検証データの取得に失敗。更新を。</div></div>`;
   const pip = symbol.endsWith("JPY")?0.01:0.0001;
-  const dec = price>50?3:5;
+  const dp = price>50?3:5;
   const fnum = v => v===Infinity ? "∞" : v.toFixed(2);
   const slA=2.0, tpA=2.0, dd=dispDir;
   const sl=price-dd*slA*a, tp=price+dd*tpA*a;
   const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
   const dname = dd===1?"買い":"売り";
-  const real = direction!==0;
 
-  const btFull=backtest(dailyBars,ENTRY_GATE,slA,tpA);
-  const split=Math.floor(dailyBars.length*0.7);
-  const btOos=backtest(dailyBars.slice(split),ENTRY_GATE,slA,tpA);
-  const st={1:{full:winrateStats(btFull,1), oos:winrateStats(btOos,1)},
-            "-1":{full:winrateStats(btFull,-1), oos:winrateStats(btOos,-1)}};
-
-  const wr = s => s ? `勝率<b>${s.wr.toFixed(0)}%</b>（${s.n}回）/ 期待値${s.exp>=0?'+':''}${s.exp.toFixed(2)}% / PF${fnum(s.pf)}` : "サンプル不足";
-
-  const headLine = real
-    ? `<div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】サイン点灯　入る ${price.toFixed(dec)}</span></div>`
-    : `<div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません（様子見）</b><br>
-       <span class="fnote">↓ もし今『${dname}』で入るなら、の参考値（現在値 ${price.toFixed(dec)}）</span></div>`;
-
-  const tpbox = orderSheet(symbol, dd, tp, sl, tpp, slp, dec);
-  const lotbox = "";
-
+  const wr = x => x ? `勝率<b>${x.wr.toFixed(0)}%</b>（${x.n}回）/ 期待値${x.exp>=0?'+':''}${x.exp.toFixed(2)}% / PF${fnum(x.pf)}` : "サンプル不足";
+  const tpbox = orderSheet(symbol, dd, tp, sl, tpp, slp, dp);
 
   const rateRow=(dv,nm)=>{
     const cur = dv===dd, col = dv===1?'var(--buy)':'var(--sell)';
-    const s=st[dv], tc=cur?'var(--text)':'var(--sub)';
+    const x=st[dv], tc=cur?'var(--text)':'var(--sub)';
     return `<div class="plan-line"><span class="nm" style="color:${cur?col:'var(--sub)'}">【${nm}】${cur?' ← いま見ている方向':''}</span><br>
-      <span class="fnote" style="color:${tc}">全期間(5年)　${wr(s.full)}</span><br>
-      <span class="fnote" style="color:${tc}">本番想定(直近)　${wr(s.oos)}</span></div>`;
+      <span class="fnote" style="color:${tc}">全期間(5年)　${wr(x.full)}</span><br>
+      <span class="fnote" style="color:${tc}">本番想定(直近)　${wr(x.oos)}</span></div>`;
   };
-
   const fullDd = st[dd].full;
   let evalTxt = "";
   if(fullDd){
@@ -578,25 +633,13 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
       evalTxt += `<div class="fnote" style="color:var(--buy)">→ リスク${riskPct}%で続けた場合、1回あたりの期待リターン ≒ 資金の +${per.toFixed(2)}%（勝ち負けを均した平均）</div>`;
     }
   }
-  const good = fullDd && fullDd.exp>0 && fullDd.pf>=1.0;
-  // 注文手順は上の orderSheet で出しているので、ここは「入っていいか」の判定だけ
-  let howto;
-  if(real && good){
-    howto=`<div class="fnote" style="margin-top:8px;color:var(--buy);">→ この方向は過去の成績も良好です。</div>`;
-  }else if(real){
-    howto=`<div class="fnote" style="margin-top:8px;color:var(--sell);">→ ただし<b>この方向は過去成績が振るいません（負け越し）</b>。見送りを推奨します。</div>`;
-  }else{
-    howto=`<div class="fnote" style="margin-top:8px;color:var(--sub);">焦らずサインを待つのがコツです。</div>`;
-  }
-
-  // 勝率などの細かい数字は、実際に入る時以外は畳んでおく（画面を短く保つ）
   const stats = `<div class="fnote" style="color:var(--accent);margin-top:6px;">◆ 過去の勝率（この損切り/利確で）</div>
     ${rateRow(1,"買い")}
     ${rateRow(-1,"売り")}
     <div class="fnote">※本番想定＝設定選びに使っていない直近期間。ここが良いほど信頼できます。</div>
     ${evalTxt}`;
 
-  if(!real){
+  if(dec.kind==="WAIT"){
     return head+`<span class="sc">様子見</span></div>
       <div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません</b><br>
         <span class="fnote">→ このペアは<b style="color:var(--accent)">何もしないのが正解</b>です。</span></div>
@@ -604,10 +647,21 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
         ${tpbox}${stats}</details>
       </div>`;
   }
+  if(dec.kind==="NO"){
+    return head+`<span class="sc">見送り</span></div>
+      <div class="plan-line"><b style="color:var(--neu)">${dname}サインは出ていますが、いまは入りません</b><br>
+        ${dec.ng.map(t=>`<span class="fnote" style="color:#ffb3ba">✖ ${t}</span><br>`).join("")}
+        <span class="fnote">→ 上の✖が消えたら入る。それまでは<b style="color:var(--accent)">何もしない</b>。</span></div>
+      <details style="margin:8px 0 0;"><summary>参考：それでも入るなら（注文手順・勝率）</summary>
+        ${tpbox}${stats}</details>
+      </div>`;
+  }
+  const cau = dec.cautions.length
+    ? `<div class="fnote" style="margin-top:6px;color:var(--accent)">${dec.cautions.map(t=>"△ "+t).join("<br>")}</div>` : "";
   return head+`<span class="sc">${dname}</span></div>
-    ${headLine}
+    <div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">方向【${dname}】入ってOK　入る ${price.toFixed(dp)}</span></div>
     ${tpbox}
-    ${howto}
+    ${cau}
     <details style="margin:8px 0 0;"><summary>過去の勝率を見る</summary>${stats}</details>
     </div>`;
 }
@@ -625,7 +679,7 @@ function planBlock(symbol, price, direction, dispDir, dailyBars){
 // ポジションの決済可能数量が 0 になって OCO（利確＋損切）が置けなくなるため。
 // 金額は【実際に注文する枚数】で出す。1万通貨あたりの数字だけ出すと
 // 推奨ロットと桁が合わず「結局いくら損するのか」が分からなくなるため。
-function orderSheet(symbol, dd, tp, sl, tpp, slp, dec){
+function orderSheet(symbol, dd, tp, sl, tpp, slp, dp){
   const dname = dd===1 ? "買い" : "売り";
   const btn   = dd===1 ? "Ask(買)" : "Bid(売)";
   const bs    = dd===1 ? "買" : "売";
@@ -641,7 +695,7 @@ function orderSheet(symbol, dd, tp, sl, tpp, slp, dec){
       extra = `<div class="lotbox" style="border-color:var(--sell);color:#ffb3ba;">
         ⚠ 資金¥${balance.toLocaleString()}・リスク${riskPct}%だと、最小の1Lot（1万通貨）でも
         損失¥${one.toLocaleString()}（資金の${(one/balance*100).toFixed(1)}%）で上限を超えます。
-        <b>今回は見送る</b>のが安全です。</div>`;
+        入るなら資金を増やすかリスク%を上げる必要があります（このままでは最終判断は<b>見送り</b>）。</div>`;
     }
   }else{
     extra = `<div class="fnote" style="color:var(--accent);">
@@ -661,9 +715,9 @@ function orderSheet(symbol, dd, tp, sl, tpp, slp, dec){
       <div class="howto-h">STEP2　決済注文（OCO）＝ 利確と損切を予約する</div>
       <div class="howto-s">⑤ ポジション照会で、いま入った <b>${symbol}</b> のポジションをタップ</div>
       <div class="howto-s">⑥ 注文タイプ ${K("OCO")}／注文数量 <span class="v">${unit} Lot</span>（決済可能数量と同じ）</div>
-      <div class="howto-tp">⑦ 指値レート（利確）に <b>${tp.toFixed(dec)}</b>　→ 届いたら <b>+¥${tpYen.toLocaleString()}</b></div>
+      <div class="howto-tp">⑦ 指値レート（利確）に <b>${tp.toFixed(dp)}</b>　→ 届いたら <b>+¥${tpYen.toLocaleString()}</b></div>
       <div class="howto-s">⑧ ${K("OCO2入力")} をタップ</div>
-      <div class="howto-sl">⑨ 逆指値レート（損切）に <b>${sl.toFixed(dec)}</b>　→ 届いたら <b>-¥${slYen.toLocaleString()}</b>　必ず入れる</div>
+      <div class="howto-sl">⑨ 逆指値レート（損切）に <b>${sl.toFixed(dp)}</b>　→ 届いたら <b>-¥${slYen.toLocaleString()}</b>　必ず入れる</div>
       <div class="howto-s">⑩ 有効期限 ${K("無期限")} → ${K("確認画面")} → ${K("注文")}</div>
       <div class="howto-s">✔ これで完了。どちらかに届いたら自動で決済され、もう片方は自動で取消。見ていなくてOK。</div>
       <div class="fnote" style="margin-top:6px;">※⑤で「決済可能数量が0」と出たら、③の損切がONで自動の決済注文が付いています。注文照会でその注文を取消してから⑤へ。<br>
@@ -673,30 +727,44 @@ function orderSheet(symbol, dd, tp, sl, tpp, slp, dec){
       <b>¥${slYen.toLocaleString()}</b>${pct}です。</div>${extra}`;
 }
 
-function planBlockNoKey(symbol, price, direction, dispDir, closes){
+function planBlockNoKey(symbol, price, dec, dispDir, closes){
   const a=approxAtrFromCloses(closes);
   const head=`<div class="card"><div class="tf-title">売買プラン`;
   if(!a) return head+`</div><div class="fnote">データ不足で計算できません。</div></div>`;
   const pip = symbol.endsWith("JPY")?0.01:0.0001;
-  const dec = price>50?3:5;
+  const dp = price>50?3:5;
   const dd=dispDir, dname = dd===1?"買い":"売り";
   const sl=price-dd*2.0*a, tp=price+dd*2.0*a;
   const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
+  const sheet=orderSheet(symbol, dd, tp, sl, tpp, slp, dp);
+  const approx=`<div class="fnote" style="margin-top:6px;">※値幅は概算。正確な値幅と過去の勝率は⚙設定でAPIキーを入れると出ます。</div>`;
 
   // サインが無い日に注文手順を全部出すと画面が埋まって読みにくい。
   // 「何もしなくていい」とだけ伝え、参考値は畳んでおく。
-  if(direction===0){
+  if(dec.kind==="WAIT"){
     return head+`<span class="sc">様子見</span></div>
       <div class="plan-line"><b style="color:var(--neu)">いまサインは出ていません</b><br>
         <span class="fnote">→ このペアは<b style="color:var(--accent)">何もしないのが正解</b>です。</span></div>
       <details style="margin:8px 0 0;"><summary>参考：もし今『${dname}』で入るなら</summary>
-        ${orderSheet(symbol, dd, tp, sl, tpp, slp, dec)}</details>
+        ${sheet}${approx}</details>
       </div>`;
   }
+  if(dec.kind==="NO"){
+    return head+`<span class="sc">見送り</span></div>
+      <div class="plan-line"><b style="color:var(--neu)">${dname}サインは出ていますが、いまは入りません</b><br>
+        ${dec.ng.map(t=>`<span class="fnote" style="color:#ffb3ba">✖ ${t}</span><br>`).join("")}
+        <span class="fnote">→ 上の✖が消えたら入る。それまでは<b style="color:var(--accent)">何もしない</b>。</span></div>
+      <details style="margin:8px 0 0;"><summary>参考：それでも入るなら（注文手順）</summary>
+        ${sheet}${approx}</details>
+      </div>`;
+  }
+  const cau = dec.cautions.length
+    ? `<div class="fnote" style="margin-top:6px;color:var(--accent)">${dec.cautions.map(t=>"△ "+t).join("<br>")}</div>` : "";
   return head+`<span class="sc">${dname}</span></div>
-    <div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">いま <b>${price.toFixed(dec)}</b> で「${dname}」が出ています</span></div>
-    ${orderSheet(symbol, dd, tp, sl, tpp, slp, dec)}
-    <div class="fnote" style="margin-top:6px;">※値幅は概算。正確な値幅と過去の勝率は⚙設定でAPIキーを入れると出ます。</div>
+    <div class="plan-line"><span class="nm" style="color:${dd===1?'var(--buy)':'var(--sell)'}">いま <b>${price.toFixed(dp)}</b> で「${dname}」入ってOK</span></div>
+    ${sheet}
+    ${cau}
+    ${approx}
     </div>`;
 }
 
@@ -731,42 +799,42 @@ async function render(){
         + tfBlock("1日ごとの動き（ここで買う・売るを決めます）",A.score,A.lines);
     }
 
-    // 判定は日足を主軸に（過去検証したのは日足のエントリーのため）
-    let direction = dailyScore>=ENTRY_GATE ? 1 : (dailyScore<=-ENTRY_GATE ? -1 : 0);
-
-    // 8h/4h は「いま入っていいタイミングか」の確認
-    const tfd=s=> s>=1?1:(s<=-1?-1:0);
-    let timing="—";
-    if(direction!==0 && s8!=null){
-      const c=(tfd(s8)===direction?1:0)+(tfd(s4)===direction?1:0);
-      timing = c===2 ? "◎ 8h/4hも同じ向き → タイミング良し"
-             : c===1 ? "○ 8h/4hの片方が同調 → まずまず"
-             : "△ 8h/4hがまだ逆 → 反転を確認してから（押し目/戻り待ち）";
-    }
-
-    // ファンダ（参考）：方向は作らず、介入警告のときだけ『買い』を止める歯止め
+    // サインは日足だけで決める（過去検証したのは日足のエントリーのため）
+    const rawDir = dailyScore>=ENTRY_GATE ? 1 : (dailyScore<=-ENTRY_GATE ? -1 : 0);
+    // ファンダ（参考）：方向は作らず、介入警告だけを最終判断の材料にする
     const {tilt, notes, warning} = fundTilt(base, quote, price);
-    let override="";
-    if(warning && direction===1){ direction=0; override=
-      `<div class="warn">⚠ ファンダ警告により『買い』は見送りに切替（介入リスク）</div>`; }
-
-    const [label,stars,cls]=verdict(dailyScore);
+    const [label,stars]=verdict(dailyScore);
     // クロス円以外はロット計算用に「決済通貨→円」レートを取得（1回だけ・失敗しても概算で続行）
     await ensureQuoteJpy(quote);
-    // 表示に使う方向：実サインがあればそれ、無ければ相場の傾き（日足→下位足）
-    const dispDir = direction!==0 ? direction
+    // 最終判断の材料：過去成績（キーあり時）と資金チェック
+    const st = dailyBars ? pastStats(dailyBars) : null;
+    const pipSz = symbol.endsWith("JPY")?0.01:0.0001;
+    const aNow = dailyBars ? atr(dailyBars) : approxAtrFromCloses(chartData);
+    let lot=null;
+    if(aNow && rawDir!==0){
+      const slp=2.0*aNow/pipSz, lc=calcLot(symbol, slp);
+      if(lc){ const one=Math.round(slp*lc.vpp); lot={lots:lc.lots, one, pct:one/balance*100}; }
+    }
+    const dec = decide({dailyScore, rawDir, warning, s8, s4, st, lot});
+    // 表示に使う方向：サインがあればそれ、無ければ相場の傾き（日足→下位足）
+    const dispDir = rawDir!==0 ? rawDir
       : (dailyScore>0 ? 1 : (dailyScore<0 ? -1 : (((s8||0)+(s4||0))>=0 ? 1 : -1)));
-    const planHtml = dailyBars ? planBlock(symbol,price,direction,dispDir,dailyBars)
-      : planBlockNoKey(symbol,price,direction,dispDir,chartData);
+    const planHtml = dailyBars ? planBlock(symbol,price,dec,dispDir,dailyBars,st)
+      : planBlockNoKey(symbol,price,dec,dispDir,chartData);
+    // 上部カードの色は最終判断に従う（サインの色ではない）。見送り・様子見は灰色
+    const cls = dec.kind==="GO" ? (dec.dir===1?"buy":"sell") : "neu";
+    const mark = {ok:"✔", ng:"✖", warn:"△"};
+    const chk = dec.rows.length
+      ? `<div class="chk">${dec.rows.map(r=>`<div class="chk-${r.s}">${mark[r.s]} ${r.t}</div>`).join("")}</div>` : "";
 
     out.innerHTML=`
       <div class="verdict v-${cls}">
         <div style="font-size:13px;color:var(--sub);">${symbol}　<b style="color:var(--text);font-size:16px;">${price.toFixed(price>50?2:4)}</b></div>
-        <div class="label">${label}</div><div class="stars">${stars}</div>
-        <div class="score">★の数＝サインの強さ（★4以上で「入っていい」合図）</div>
-        ${direction!==0&&s8!=null?`<div class="score">${timing}</div>`:''}
+        <div class="label">${dec.head}</div><div class="stars">${stars}</div>
+        <div class="score">${dec.sub}</div>
+        <div class="score">★＝サインの強さ（★4以上で点灯）。入っていいかは下の✔✖で決まります</div>
+        ${chk}
       </div>
-      ${override}
       ${eventBlock()}
       ${warning?`<div class="warn">⚠ ${warning}</div>`:''}
       ${planHtml}
@@ -788,16 +856,17 @@ async function render(){
     // チャートは折りたたみの中。閉じたままだと幅0で描けないので、開いた時に描く
     const cb=document.getElementById("chartBox");
     if(cb) cb.addEventListener("toggle",()=>{ if(cb.open) drawChart(chartData); });
-    setHint(dailyScore, direction);
+    setHint(dec);
   }catch(e){
     out.innerHTML=`<div class="card"><div class="err">取得に失敗：${e.message}<br>
       APIキーや通信環境を確認して「更新する」を押してください。<br>
       （1分に8回以上だと制限がかかります。少し待って再実行を）</div></div>`;
   }
 }
-function setHint(dailyScore, direction){
+function setHint(dec){
   let h;
-  if(direction!==0) h=`新規は「<b>即時</b>」で入り、直後にポジション照会から「<b>OCO</b>」で利確と損切を必ず置く。1回の損失は資金の2%までに。`;
+  if(dec.kind==="GO") h=`新規は「<b>即時</b>」で入り、直後にポジション照会から「<b>OCO</b>」で利確と損切を必ず置く。1回の損失は資金の2%までに。`;
+  else if(dec.kind==="NO") h=`サインは出ていますが<b>見送り</b>。上の✖の理由が消えるまで入らない。`;
   else h=`いまは強いサインなし。<b>入らないのが正解</b>です。サインは月に数回しか出ません。`;
   document.getElementById("hint").innerHTML=h;
 }
@@ -840,8 +909,9 @@ function renderScan(results,fails){
   const sig=results.filter(r=>Math.abs(r.score)>=ENTRY_GATE).length;
   const rows=results.map(r=>{
     const d=r.score>=ENTRY_GATE?1:(r.score<=-ENTRY_GATE?-1:0);
-    const tag=d===1?"買いサイン":(d===-1?"売りサイン":"様子見");
-    const col=d===1?"var(--buy)":(d===-1?"var(--sell)":"var(--sub)");
+    const veto = d===1 && !!fundTilt(r.b,r.q,r.price).warning;   // 詳細画面と同じ歯止め
+    const tag=veto?"買いサイン → 見送り（介入警戒）":(d===1?"買いサイン":(d===-1?"売りサイン":"様子見"));
+    const col=veto?"var(--accent)":(d===1?"var(--buy)":(d===-1?"var(--sell)":"var(--sub)"));
     return `<div class="scan-row" data-b="${r.b}" data-q="${r.q}">
       <div class="scan-pair">${r.b}/${r.q}</div>
       <div class="scan-score">日足 ${r.score>=0?'+':''}${r.score}</div>
@@ -851,7 +921,7 @@ function renderScan(results,fails){
   out.innerHTML=eventBlock()+`<div class="card">
     <div class="tf-title">全ペア一括チェック（日足）
       <span class="sc">サイン ${sig}件 / ${results.length}ペア</span></div>
-    <div class="fnote" style="margin-bottom:4px;">スコアが大きい順。日足スコア±${ENTRY_GATE}以上でサイン。行をタップで詳細（勝率・利確損切り・推奨ロット）。</div>
+    <div class="fnote" style="margin-bottom:4px;">スコアが大きい順。日足スコア±${ENTRY_GATE}以上でサイン。<b>サイン＝入ってOKではありません</b>。行をタップすると過去成績・資金も含めた最終判断が出ます。</div>
     ${rows}
     ${fails.length?`<div class="fnote">※取得失敗: ${fails.join(" ")}</div>`:""}
     <div class="fnote" style="margin-top:6px;">※一括チェックは日足のみ・キー不要（ECB日次データ）。毎営業日1回更新されます。</div>
