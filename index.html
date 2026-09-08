@@ -23,8 +23,9 @@
   h1{font-size:19px; margin:4px 0 2px; text-align:center;}
   .sub{font-size:11px; color:var(--sub); text-align:center; margin-bottom:12px;}
   .pairs{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px;}
-  .pairs button{padding:9px 0; border:1px solid var(--line); background:var(--card);
-    color:var(--text); border-radius:10px; font-size:13px; font-weight:600;}
+  .pairs button{padding:7px 0; border:1px solid var(--line); background:var(--card);
+    color:var(--text); border-radius:10px; font-size:13px; font-weight:600; line-height:1.25;}
+  .pairs button small{display:block; font-size:10px; font-weight:700; margin-top:2px;}
   .pairs button.on{background:var(--accent); color:#1a1300; border-color:var(--accent);}
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px;
     padding:14px; margin-bottom:12px;}
@@ -163,7 +164,8 @@
       <dt>MACD</dt><dd>2本の平均線の差から「勢い・転換」を見る指標。<span class="ex">MACD線がシグナル線を上抜け＝買い、下抜け＝売り。</span></dd>
       <dt>シグナル(線)</dt><dd>MACDをさらにならした線。MACD線と比べる<b>基準の線</b>。<span class="ex">この線との交差で判断する。</span></dd>
       <dt>ボリンジャーバンド（バンド）</dt><dd>価格の振れ幅から引く「上限・中央・下限」の<b>帯（＝バンド）</b>。価格はだいたいこの帯の中で動く。<span class="ex">下限タッチ＝下がりすぎ(反発期待)、上限タッチ＝上がりすぎ(反落注意)。</span></dd>
-      <dt>ATR</dt><dd>1日にだいたい何pips動くかの平均（変動幅）。<span class="ex">損切り・利確の幅を決めるのに使う。</span></dd>
+      <dt>ATR</dt><dd>1日にだいたい何pips動くかの平均（変動幅）。<span class="ex">損切り・利確の幅はこの2.5倍（5年の検証で一番成績が安定した幅）。</span></dd>
+      <dt>サインの初日</dt><dd>日足スコアが±3以上になった<b>最初の日</b>。<span class="ex">過去5年では初日に入った取引は勝ち越し（PF1.62）、2日目以降に入った取引は負け越し（PF0.71）。だから2日目以降は見送り。</span></dd>
       <dt>pips（ピップス）</dt><dd>為替の最小の値動き単位。円ペアは0.01円＝1pip。<span class="ex">100pips＝1円ぶん。</span></dd>
       <dt>期待値</dt><dd>1回の取引の平均損益。<span class="ex">プラスなら続けるほど有利。マイナスは負け越し。</span></dd>
       <dt>PF（プロフィットファクター）</dt><dd>総利益÷総損失。<span class="ex">1超で勝ち越し。1.3以上が合格基準。</span></dd>
@@ -191,6 +193,8 @@ let current = ["USD","JPY"];
 let apiKey = localStorage.getItem("td_key") || "";
 let balance = parseFloat(localStorage.getItem("fx_bal")) || 0;   // 資金(円)
 let riskPct = parseFloat(localStorage.getItem("fx_risk")) || 2;  // 1回のリスク%
+let lastEcbDate = null;   // キー無し時のデータ日付（frankfurter の最終日）
+let view = "scan";        // いま見ている画面："scan"=一覧 / "pair"=ペア詳細（「更新する」の対象を決める）
 const WIN_GATE = 60;   // 「合格」とみなす過去勝率の基準(%)
 const PF_GATE = 1.3;   // 損益バランス(プロフィットファクター)の合格ライン
 
@@ -278,6 +282,14 @@ function resample(closes, step){
 // RSI極値=±3, ボリンジャー=±2（逆張り系が利益源）／ MACD=±1, MAクロス=±1（控えめ）
 // 25MA位置は単体で優位性なし → 参考表示のみ（スコア加算しない）
 const ENTRY_GATE = 3;   // 日足スコアがこの値以上で方向を確定（=検証したエントリー条件）
+// 損切・利確の幅（ATR倍）。2026-09-08 に11ペア5年で再検証：2.0→2.5 で
+// 全期間 PF1.48→1.57 / 後半30% 1.78→2.10 / 直近1年 1.51→1.85。SL2.5〜3.0 は一様に良く、
+// 隣の設定でも改善するので偶然の1点ではない（逆張りには値幅の余裕が要る）。
+const SL_ATR = 2.5, TP_ATR = 2.5;
+// サインは「初日」だけ有効。同じ検証で、サイン点灯の初日に入った取引は n=225 で PF1.62、
+// 2日目以降に入った取引は n=22 で PF0.71（負け越し）。落ちてくるナイフへの追い乗りを止める。
+// 8h/4h の「同調待ち」は撤去：直近2年で同調を待つと PF1.66→1.12（片方）／0.74（両方）と悪化した。
+const FRESH_ONLY = true;
 // 各行 = [向き, 平易な名前, 説明, 点数, 役割]
 //   役割 main=判定の中心 / sub=補助 / ref=点数に入れない参考
 // 専門用語は括弧内に併記するだけにして、主役・脇役を明示する。
@@ -314,6 +326,18 @@ function analyze(closes, price){
   }
   return {score, lines};
 }
+// サインが点灯してから何日目か（1=初日）。前の日の終値までで同じ向きに基準以上なら継続中。
+// 直近の数日だけ遡ればよいので、遡りは最大9日で打ち切る。
+function signalDay(closes, dir){
+  if(dir===0) return 0;
+  let k=0;
+  while(k<9 && closes.length-1-k>80){
+    const sub=closes.slice(0, closes.length-1-k);
+    const {score}=analyze(sub, sub[sub.length-1]);
+    if(dir===1 ? score>=ENTRY_GATE : score<=-ENTRY_GATE) k++; else break;
+  }
+  return k+1;
+}
 // 日足スコア → 総合判定（検証したエントリー基準= ±ENTRY_GATE）
 function verdict(score){
   if(score>=6) return ["強い買い","★★★★★","buy"];
@@ -336,15 +360,20 @@ function atr(bars,n=14){
   }
   return trs.slice(trs.length-n).reduce((x,y)=>x+y,0)/n;
 }
-function backtest(bars, entryThresh=ENTRY_GATE, slATR=2.0, tpATR=2.0, maxHold=15){
+function backtest(bars, entryThresh=ENTRY_GATE, slATR=SL_ATR, tpATR=TP_ATR, maxHold=15, fresh=FRESH_ONLY){
   const warmup=80; let nextFree=80; const trades=[];
   const closes=bars.map(b=>b.c);
+  const scores=new Array(bars.length).fill(null);   // 初日判定に前日のスコアが要るので全日ぶん残す
   for(let t=warmup;t<bars.length-1;t++){
-    if(t<nextFree) continue;
     const sub=closes.slice(0,t+1);
     const {score}=analyze(sub, sub[sub.length-1]);
+    scores[t]=score;
+    if(t<nextFree) continue;
     const d = score>=entryThresh?1:(score<=-entryThresh?-1:0);
     if(d===0) continue;
+    // 初日限定：前日も同じ向きで基準以上なら「2日目以降」なので入らない
+    const ps=scores[t-1];
+    if(fresh && ps!=null && (d===1 ? ps>=entryThresh : ps<=-entryThresh)) continue;
     const a=atr(bars.slice(0,t+1)); if(!a) continue;
     const entry=bars[t].c, sl=entry-d*slATR*a, tp=entry+d*tpATR*a;
     let outcome=null, heldTo=t+1;
@@ -385,28 +414,29 @@ function rateScheme(st){
   return {mark:"NEU", text:"△ 一長一短（基準未達）", ok:false, pass:true};
 }
 
-// ===== ファンダ（社会・金融・政治情勢）2026-07-25時点スナップショット =====
+// ===== ファンダ（社会・金融・政治情勢）2026-09-08時点スナップショット =====
 const FUNDAMENTALS = {
-  updated:"2026-07-25",
-  summary:"ドル円は7/23に163.99円と1986年11月以来 約40年ぶりの円安水準。イラン情勢の緊迫→原油高→米インフレ再燃でFRBは利下げどころか『利上げ』観測、日銀は利上げ姿勢でも歩みが遅く、日米金利差拡大の思惑で円全面安が続く。市場が見る為替介入ラインは164〜165円で、4/30のような事前警告なしの『不意打ち介入』が警戒されている。介入が入るとドル円は数円規模で急落する。",
+  updated:"2026-09-08",
+  summary:"ドル円は7/28に163.91円（約40年ぶりの円安）をつけた直後、7/30に政府・日銀が単独介入（推計8.45兆円）、7/31には28年ぶりの日米協調介入。7/30〜8/26の介入額は15.4兆円で月次として過去最大（年初来27.1兆円）。ドル円は8/3に156.68円まで急落、8月下旬に160円へ戻りを試したが、9月に入って154円台（2月下旬以来の円高水準）。FRBは9月FOMCでの利上げ観測（市場の織り込み約65%）、日銀も9月会合での利上げ観測（一時8割）で、日米とも『利上げ』方向。9/15〜16 FOMC → 9/17〜18 日銀会合が連続し、結果が同じ方向に揃うと値動きが増幅されやすい。",
   currencies:{
-    USD:{bias:1, note:"原油高でインフレ再燃、FRBは利上げ観測すら浮上。ドル買い優勢。"},
-    JPY:{bias:-1,note:"日銀利上げは織り込み進むも金利差は開いたまま。支えは介入警戒のみで円安地合い。"},
-    EUR:{bias:0, note:"対ドル軟調・対円堅調で差引き中立。"},
+    USD:{bias:1, note:"インフレ再燃でFRBは9月利上げ観測（約65%）。金利面ではドル買い材料。"},
+    JPY:{bias:1, note:"7〜8月の大規模介入（日米協調含む）＋日銀9月利上げ観測で円買い地合い。円安に戻ると再介入警戒。"},
+    EUR:{bias:0, note:"はっきりした材料に乏しく中立。"},
     GBP:{bias:0, note:"方向感は限定的。"},
-    AUD:{bias:0, note:"資源国通貨。原油高は支援だがリスク動向次第で中立。"},
+    AUD:{bias:0, note:"資源国通貨。リスク動向次第で中立。"},
     NZD:{bias:0, note:"はっきりした材料に乏しく中立。"},
-    CAD:{bias:1, note:"産油国通貨。原油高は支援材料。"},
-    CHF:{bias:1, note:"中東情勢の緊迫で安全通貨needが再燃。"}
+    CAD:{bias:0, note:"産油国通貨。原油次第で中立。"},
+    CHF:{bias:0, note:"安全通貨。地政学リスクが高まる局面で買われやすい。"}
   },
   pairAlerts:{
-    USDJPY:{note:"約40年ぶりの円安圏。市場が見る介入ラインは164〜165円で『不意打ち介入』警戒中。介入が入るとドル円は数円規模で急落するため、新規『買い』は特に危険。", level:164.0, dangerDir:"up", near:1.5}
+    USDJPY:{note:"7〜8月に過去最大の円買い介入（日米協調）が入った直後の相場。市場が見る再介入ラインは163〜165円で、そこへ近づくと『不意打ち介入』で数円規模の急落が起き得るため、新規『買い』は特に危険。", level:163.0, dangerDir:"up", near:1.5}
   },
-  // 値が飛ぶ重要イベント（近づくと自動で警告を出す）
+  // 値が飛ぶ重要イベント（近づくと自動で警告を出す）。※日付が過ぎると自動で消えるので、随時追加する
   events:[
-    {date:"2026-07-29", name:"FOMC（米金融政策決定）", note:"据置き予想が中心だが、原油高でインフレ懸念。声明のタカ派度で大きく動く。"},
-    {date:"2026-07-31", name:"日銀 金融政策決定会合", note:"利上げの有無・総裁会見で円が急変動しやすい。"},
-    {date:"2026-08-07", name:"米雇用統計", note:"毎月第1金曜。発表直後は数十pips飛ぶことが多い。"}
+    {date:"2026-09-11", name:"米CPI（消費者物価指数）", note:"日本時間21:30発表。9月FOMCの利上げ判断に直結するため、上下どちらにも大きく動く。"},
+    {date:"2026-09-17", name:"FOMC（米金融政策決定）", note:"結果は日本時間17日早朝。利上げ観測が約65%で、据置きなら急落・利上げでも会見次第で乱高下。"},
+    {date:"2026-09-18", name:"日銀 金融政策決定会合", note:"結果は18日昼、総裁会見15:30。利上げの有無で円が急変動。前日のFOMCと結果が揃うと値動きが増幅。"},
+    {date:"2026-10-02", name:"米雇用統計", note:"毎月第1金曜（日本時間21:30）。発表直後は数十pips飛ぶことが多い。"}
   ],
   eventsNote:"FOMC・日銀会合・米雇用統計・CPI前後は値が飛びやすい。発表の直前直後は新規エントリーを避けるのが安全。"
 };
@@ -456,6 +486,7 @@ async function fetchFrankfurter(base, quote){
   if(!res.ok) throw new Error("通信エラー "+res.status);
   const j=await res.json();
   const days=Object.keys(j.rates).sort();
+  lastEcbDate=days[days.length-1];
   return days.map(d=>j.rates[d][quote]);
 }
 
@@ -531,13 +562,14 @@ function fundBlock(tilt, notes){
       ※相場の空気であって、売買判定には足していません（${FUNDAMENTALS.updated} 時点）</div>`;
 }
 // ===== 最終判断（ここ1か所で決める）=====
-// 星（日足スコア）・ファンダ警告・過去成績・資金・8h/4hのタイミング・イベントを
+// 星（日足スコア）・サインの初日か・ファンダ警告・過去成績・資金・イベントを
 // ここでだけ突き合わせ、「入ってOK／見送り／様子見」を1つに決める。
 // 他の表示はこの結果を映すだけで、独自に「推奨」「見送り」を言わない
 // （以前は星が★4なのに別の場所で見送りと出て、どちらが本当か分からなかった）。
 //   ✖ = 入らない理由。1つでもあれば「見送り」
 //   △ = 入ってもいいが注意。見送りにはしない
-//       （8h/4hやイベントは過去検証に入れていないので、強制すると検証した成績と別物になる）
+//       （イベントは過去検証に入れていないので、強制すると検証した成績と別物になる）
+//   8h/4h は判定に使わない：同調を待つと成績が下がる（2026-09-08 検証、上の定数のコメント参照）
 function decide(o){
   const rows=[], ng=[], cautions=[];
   const rawDir=o.rawDir, dname=rawDir===1?"買い":"売り";
@@ -547,7 +579,8 @@ function decide(o){
       sub:`日足${sc}。サインは±${ENTRY_GATE}以上で点灯`, rows:[], ng:[], cautions:[]};
   }
   const add=(st,t)=>{ rows.push({s:st,t}); if(st==="ng") ng.push(t); if(st==="warn") cautions.push(t); };
-  add("ok", `サイン：日足${sc} → ${dname}サイン点灯`);
+  if(FRESH_ONLY && o.day>=2) add("ng", `サイン：日足${sc}だが点灯${o.day}日目（初日だけ有効。2日目以降に入ると負け越し）`);
+  else add("ok", `サイン：日足${sc} → ${dname}サイン点灯（初日）`);
   // ファンダ：介入警戒ゾーンでの『買い』だけ止める
   if(o.warning && rawDir===1) add("ng", "ファンダ：介入警戒ゾーン。いまの『買い』は入らない");
   else add("ok", "ファンダ：止める材料なし");
@@ -570,19 +603,12 @@ function decide(o){
     if(n<1) add("ng", `資金：最小の1Lotでも損失¥${o.lot.one.toLocaleString()}（資金の${o.lot.pct.toFixed(1)}%）で上限${riskPct}%を超える`);
     else add("ok", `資金：${n}Lot で損失上限¥${(o.lot.one*n).toLocaleString()}（資金の${(o.lot.pct*n).toFixed(1)}%）`);
   }else add("warn", "資金：未設定（⚙設定で資金を入れるとLot数と損失額が出る）");
-  // タイミング：8h/4h（方向には使わない）
-  if(o.s8!=null){
-    const tfd=x=> x>=1?1:(x<=-1?-1:0);
-    const c=(tfd(o.s8)===rawDir?1:0)+(tfd(o.s4)===rawDir?1:0);
-    if(c===2) add("ok", "タイミング：8h/4hも同じ向き");
-    else if(c===1) add("ok", "タイミング：8h/4hの片方が同調（まずまず）");
-    else add("warn", "タイミング：8h/4hがまだ逆。押し目／戻りを待って入るとなお良い");
-  }
   // イベント：当日・前日
   const ev=upcomingEvents(1);
   if(ev.length) add("warn", `イベント：${ev[0].days===0?"本日":"明日"} ${ev[0].name}。発表の直前直後は入らない`);
   const kind = ng.length ? "NO" : "GO";
-  return {kind, dir:rawDir, dname,
+  const stale = FRESH_ONLY && o.day>=2;   // 2日目以降＝この✖は消えない（次のサインの初日を待つ）
+  return {kind, dir:rawDir, dname, stale,
     head: kind==="GO" ? `${dname}で入ってOK` : `${dname}サインだが見送り`,
     sub:  kind==="GO" ? (cautions.length ? "△の注意点を見てから入る" : "止める理由なし")
                       : `理由：${ng.map(t=>t.split("：")[0]).join("・")}`,
@@ -590,9 +616,9 @@ function decide(o){
 }
 // 過去成績（買い・売り両方、全期間＋本番想定）。最終判断と売買プランの両方で使うので1回だけ計算する
 function pastStats(dailyBars){
-  const btFull=backtest(dailyBars,ENTRY_GATE,2.0,2.0);
+  const btFull=backtest(dailyBars);
   const split=Math.floor(dailyBars.length*0.7);
-  const btOos=backtest(dailyBars.slice(split),ENTRY_GATE,2.0,2.0);
+  const btOos=backtest(dailyBars.slice(split));
   return {1:{full:winrateStats(btFull,1), oos:winrateStats(btOos,1)},
           "-1":{full:winrateStats(btFull,-1), oos:winrateStats(btOos,-1)}};
 }
@@ -607,7 +633,7 @@ function planBlock(symbol, price, dec, dispDir, dailyBars, st){
   const pip = symbol.endsWith("JPY")?0.01:0.0001;
   const dp = price>50?3:5;
   const fnum = v => v===Infinity ? "∞" : v.toFixed(2);
-  const slA=2.0, tpA=2.0, dd=dispDir;
+  const slA=SL_ATR, tpA=TP_ATR, dd=dispDir;
   const sl=price-dd*slA*a, tp=price+dd*tpA*a;
   const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
   const dname = dd===1?"買い":"売り";
@@ -651,7 +677,7 @@ function planBlock(symbol, price, dec, dispDir, dailyBars, st){
     return head+`<span class="sc">見送り</span></div>
       <div class="plan-line"><b style="color:var(--neu)">${dname}サインは出ていますが、いまは入りません</b><br>
         ${dec.ng.map(t=>`<span class="fnote" style="color:#ffb3ba">✖ ${t}</span><br>`).join("")}
-        <span class="fnote">→ 上の✖が消えたら入る。それまでは<b style="color:var(--accent)">何もしない</b>。</span></div>
+        <span class="fnote">→ ${dec.stale?"次にサインが点灯した<b>初日</b>に入る":"上の✖が消えたら入る"}。それまでは<b style="color:var(--accent)">何もしない</b>。</span></div>
       <details style="margin:8px 0 0;"><summary>参考：それでも入るなら（注文手順・勝率）</summary>
         ${tpbox}${stats}</details>
       </div>`;
@@ -734,7 +760,7 @@ function planBlockNoKey(symbol, price, dec, dispDir, closes){
   const pip = symbol.endsWith("JPY")?0.01:0.0001;
   const dp = price>50?3:5;
   const dd=dispDir, dname = dd===1?"買い":"売り";
-  const sl=price-dd*2.0*a, tp=price+dd*2.0*a;
+  const sl=price-dd*SL_ATR*a, tp=price+dd*TP_ATR*a;
   const slp=Math.abs(price-sl)/pip, tpp=Math.abs(tp-price)/pip;
   const sheet=orderSheet(symbol, dd, tp, sl, tpp, slp, dp);
   const approx=`<div class="fnote" style="margin-top:6px;">※値幅は概算。正確な値幅と過去の勝率は⚙設定でAPIキーを入れると出ます。</div>`;
@@ -753,7 +779,7 @@ function planBlockNoKey(symbol, price, dec, dispDir, closes){
     return head+`<span class="sc">見送り</span></div>
       <div class="plan-line"><b style="color:var(--neu)">${dname}サインは出ていますが、いまは入りません</b><br>
         ${dec.ng.map(t=>`<span class="fnote" style="color:#ffb3ba">✖ ${t}</span><br>`).join("")}
-        <span class="fnote">→ 上の✖が消えたら入る。それまでは<b style="color:var(--accent)">何もしない</b>。</span></div>
+        <span class="fnote">→ ${dec.stale?"次にサインが点灯した<b>初日</b>に入る":"上の✖が消えたら入る"}。それまでは<b style="color:var(--accent)">何もしない</b>。</span></div>
       <details style="margin:8px 0 0;"><summary>参考：それでも入るなら（注文手順）</summary>
         ${sheet}${approx}</details>
       </div>`;
@@ -770,6 +796,7 @@ function planBlockNoKey(symbol, price, dec, dispDir, closes){
 
 // ===== 描画 =====
 async function render(){
+  view="pair";
   const out=document.getElementById("out");
   out.innerHTML='<div class="loading">読み込み中…（検証に数秒）</div>';
   const [base,quote]=current, symbol=base+"/"+quote;
@@ -789,8 +816,9 @@ async function render(){
       const A=analyze(d,price), B=analyze(h8,price), C=analyze(h4,price);
       dailyScore=A.score; s8=B.score; s4=C.score;
       panels = tfBlock("1日ごとの動き（ここで買う・売るを決めます）",A.score,A.lines)
-             + tfBlock("8時間ごとの動き（入る時期の確認）",B.score,B.lines)
-             + tfBlock("4時間ごとの動き（入る時期の確認）",C.score,C.lines);
+             + `<div class="fnote" style="margin:8px 0 4px;">↓ 8時間・4時間の動きは<b>参考表示</b>です。判定には使いません（同調を待ってから入ると成績が下がると検証で分かったため）。</div>`
+             + tfBlock("8時間ごとの動き（参考）",B.score,B.lines)
+             + tfBlock("4時間ごとの動き（参考）",C.score,C.lines);
     }else{
       const d=await fetchFrankfurter(base,quote);
       price=d[d.length-1]; chartData=d;
@@ -812,10 +840,14 @@ async function render(){
     const aNow = dailyBars ? atr(dailyBars) : approxAtrFromCloses(chartData);
     let lot=null;
     if(aNow && rawDir!==0){
-      const slp=2.0*aNow/pipSz, lc=calcLot(symbol, slp);
+      const slp=SL_ATR*aNow/pipSz, lc=calcLot(symbol, slp);
       if(lc){ const one=Math.round(slp*lc.vpp); lot={lots:lc.lots, one, pct:one/balance*100}; }
     }
-    const dec = decide({dailyScore, rawDir, warning, s8, s4, st, lot});
+    const dailyCloses = dailyBars ? dailyBars.map(b=>b.c) : chartData;
+    const day = signalDay(dailyCloses, rawDir);
+    const dec = decide({dailyScore, rawDir, warning, s8, s4, st, lot, day});
+    const fresh = apiKey ? "データ：Twelve Data（日足は当日分を含む・ほぼ最新）"
+                         : `データ：ECB ${lastEcbDate||""} の終値（1日1回更新・当日分は含まない）`;
     // 表示に使う方向：サインがあればそれ、無ければ相場の傾き（日足→下位足）
     const dispDir = rawDir!==0 ? rawDir
       : (dailyScore>0 ? 1 : (dailyScore<0 ? -1 : (((s8||0)+(s4||0))>=0 ? 1 : -1)));
@@ -834,6 +866,7 @@ async function render(){
         <div class="score">${dec.sub}</div>
         <div class="score">★＝サインの強さ（★4以上で点灯）。入っていいかは下の✔✖で決まります</div>
         ${chk}
+        <div class="score" style="margin-top:8px;">${fresh}</div>
       </div>
       ${eventBlock()}
       ${warning?`<div class="warn">⚠ ${warning}</div>`:''}
@@ -865,7 +898,7 @@ async function render(){
 }
 function setHint(dec){
   let h;
-  if(dec.kind==="GO") h=`新規は「<b>即時</b>」で入り、直後にポジション照会から「<b>OCO</b>」で利確と損切を必ず置く。1回の損失は資金の2%までに。`;
+  if(dec.kind==="GO") h=`サインは<b>初日だけ有効</b>。新規は「<b>即時</b>」で入り、直後にポジション照会から「<b>OCO</b>」で利確と損切を必ず置く。1回の損失は資金の2%までに。`;
   else if(dec.kind==="NO") h=`サインは出ていますが<b>見送り</b>。上の✖の理由が消えるまで入らない。`;
   else h=`いまは強いサインなし。<b>入らないのが正解</b>です。サインは月に数回しか出ません。`;
   document.getElementById("hint").innerHTML=h;
@@ -874,6 +907,8 @@ function setHint(dec){
 // ===== 全ペア一括スキャン（frankfurter・キー不要・日足のみ）=====
 // 11ペアを base 通貨ごとにまとめて7リクエストで取得し、日足スコアを一覧表示する。
 async function scanAll(){
+  view="scan";
+  [...pairsEl.children].forEach(c=>c.classList.remove("on"));   // 一覧では選択中のペアを無くす
   const out=document.getElementById("out");
   out.innerHTML='<div class="loading">全ペアをチェック中…（10秒ほど）</div>';
   const groups={};
@@ -887,17 +922,29 @@ async function scanAll(){
       if(!res.ok) throw new Error("HTTP "+res.status);
       const j=await res.json();
       const days=Object.keys(j.rates).sort();
+      lastEcbDate=days[days.length-1];
       for(const q of groups[b]){
         const closes=days.map(d=>j.rates[d][q]).filter(v=>v!=null);
         if(closes.length<80){ fails.push(b+"/"+q); continue; }
         const price=closes[closes.length-1];
         const {score}=analyze(closes,price);
-        results.push({b,q,score,price});
+        const d=score>=ENTRY_GATE?1:(score<=-ENTRY_GATE?-1:0);
+        const day=signalDay(closes,d);
+        const veto = d===1 && !!fundTilt(b,q,price).warning;   // 詳細画面と同じ歯止め
+        results.push({b,q,score,price,d,day,veto});
         if(q==="JPY") quoteJpyRates[b]=price;   // ついでにロット計算用レートも記憶
       }
     }catch(e){ groups[b].forEach(q=>fails.push(b+"/"+q)); }
   }
   renderScan(results,fails);
+}
+// 一覧の1行ぶんの表示（詳細画面の最終判断と同じ語を使う）
+function scanTag(r){
+  if(r.d===0) return {tag:"様子見", col:"var(--sub)", go:false};
+  const nm=r.d===1?"買い":"売り";
+  if(r.veto) return {tag:`${nm}サイン → 見送り（介入警戒）`, col:"var(--accent)", go:false};
+  if(FRESH_ONLY && r.day>=2) return {tag:`${nm}サイン ${r.day>=10?"10日以上":r.day+"日目"} → 見送り`, col:"var(--sub)", go:false};
+  return {tag:`${nm}サイン 初日 ▶ 詳細へ`, col:r.d===1?"var(--buy)":"var(--sell)", go:true};
 }
 function renderScan(results,fails){
   const out=document.getElementById("out");
@@ -905,27 +952,34 @@ function renderScan(results,fails){
     out.innerHTML='<div class="card"><div class="err">一括チェックに失敗しました。通信環境を確認して再実行してください。</div></div>';
     return;
   }
-  results.sort((x,y)=>Math.abs(y.score)-Math.abs(x.score));
-  const sig=results.filter(r=>Math.abs(r.score)>=ENTRY_GATE).length;
+  // 並び：入れる候補（初日サイン）→ その他のサイン → 様子見。同じ組はスコアの大きい順
+  const rank=r=>scanTag(r).go?0:(r.d!==0?1:2);
+  results.sort((x,y)=>rank(x)-rank(y) || Math.abs(y.score)-Math.abs(x.score));
+  const go=results.filter(r=>scanTag(r).go).length;
   const rows=results.map(r=>{
-    const d=r.score>=ENTRY_GATE?1:(r.score<=-ENTRY_GATE?-1:0);
-    const veto = d===1 && !!fundTilt(r.b,r.q,r.price).warning;   // 詳細画面と同じ歯止め
-    const tag=veto?"買いサイン → 見送り（介入警戒）":(d===1?"買いサイン":(d===-1?"売りサイン":"様子見"));
-    const col=veto?"var(--accent)":(d===1?"var(--buy)":(d===-1?"var(--sell)":"var(--sub)"));
+    const t=scanTag(r);
     return `<div class="scan-row" data-b="${r.b}" data-q="${r.q}">
       <div class="scan-pair">${r.b}/${r.q}</div>
       <div class="scan-score">日足 ${r.score>=0?'+':''}${r.score}</div>
-      <div class="scan-msg"><b style="color:${col}">${tag}</b>${d!==0?" ← タップで詳細":""}</div>
+      <div class="scan-msg"><b style="color:${t.col}">${t.tag}</b></div>
     </div>`;
   }).join("");
   out.innerHTML=eventBlock()+`<div class="card">
-    <div class="tf-title">全ペア一括チェック（日足）
-      <span class="sc">サイン ${sig}件 / ${results.length}ペア</span></div>
-    <div class="fnote" style="margin-bottom:4px;">スコアが大きい順。日足スコア±${ENTRY_GATE}以上でサイン。<b>サイン＝入ってOKではありません</b>。行をタップすると過去成績・資金も含めた最終判断が出ます。</div>
+    <div class="tf-title">きょう入れる候補
+      <span class="sc">${go}ペア / ${results.length}ペア</span></div>
+    <div class="fnote" style="margin-bottom:4px;">${go===0?"<b>きょうは入れる候補なし。何もしないのが正解です。</b>":"候補の行をタップすると、過去成績・資金も含めた最終判断が出ます。"}</div>
     ${rows}
     ${fails.length?`<div class="fnote">※取得失敗: ${fails.join(" ")}</div>`:""}
-    <div class="fnote" style="margin-top:6px;">※一括チェックは日足のみ・キー不要（ECB日次データ）。毎営業日1回更新されます。</div>
+    <div class="fnote" style="margin-top:6px;">※データ：ECB ${lastEcbDate||""} の終値（1日1回・当日分は含まない）。サインは日足±${ENTRY_GATE}以上、<b>初日だけ有効</b>。</div>
   </div>`;
+  // ペアボタンに結果を出す（一覧を閉じても、どのペアにサインが出ているか分かるように）
+  const byPair={}; results.forEach(r=>byPair[r.b+"/"+r.q]=r);
+  [...pairsEl.children].forEach(btn=>{
+    const r=byPair[btn.dataset.pair]; if(!r) return;
+    const t=scanTag(r);
+    const short = r.d===0 ? "—" : (t.go ? (r.d===1?"買い":"売り")+"◎" : (r.veto?"見送り":(r.day>=10?"10日+":`${r.day}日目`)));
+    btn.innerHTML=`${btn.dataset.pair}<small style="color:${t.col}">${r.score>=0?'+':''}${r.score}　${short}</small>`;
+  });
   [...out.querySelectorAll(".scan-row")].forEach(el=>{
     el.onclick=()=>{
       current=[el.dataset.b, el.dataset.q];
@@ -941,7 +995,7 @@ const pairsEl=document.getElementById("pairs");
 PAIRS.forEach(p=>{
   const b=document.createElement("button");
   b.textContent=p[0]+"/"+p[1];
-  if(p[0]===current[0]&&p[1]===current[1]) b.classList.add("on");
+  b.dataset.pair=p[0]+"/"+p[1];
   b.onclick=()=>{current=p; [...pairsEl.children].forEach(c=>c.classList.remove("on"));
     b.classList.add("on"); render();};
   pairsEl.appendChild(b);
@@ -954,7 +1008,7 @@ document.getElementById("saveKey").onclick=()=>{
   setTimeout(()=>document.getElementById("saveKey").textContent="保存",1500);
   render();
 };
-document.getElementById("reload").onclick=render;
+document.getElementById("reload").onclick=()=> view==="scan" ? scanAll() : render();
 document.getElementById("scan").onclick=scanAll;
 
 // 資金管理の入力（資金・リスク%）を記憶して再計算
@@ -970,7 +1024,8 @@ riskSel.addEventListener("change",()=>{
   riskPct=parseFloat(riskSel.value)||2;
   localStorage.setItem("fx_risk",riskPct); render();
 });
-render();
+// 最初の画面は「きょう入れる候補があるか」の一覧（キー不要）。ペアをタップすると詳細へ
+scanAll();
 </script>
 </body>
 </html>
