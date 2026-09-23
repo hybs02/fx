@@ -67,6 +67,35 @@ def load(p, use_cache):
     return d, h
 
 
+def wait_for_morning():
+    """GitHub の定時実行は混むと 1〜2 時間遅れる（us-stocks では毎回約 2 時間遅れ）。
+    そこで早朝（日本の 6〜8 時）に起動しておき、UTC 0 時 1 分（日本の 9:01）まで待ってから計算する。
+    遅れて 0 時を過ぎてから起動した時は待たない。金曜の夜（翌日が土曜）は待たない。"""
+    now = dt.datetime.now(dt.timezone.utc)
+    if now.hour < 18 or now.weekday() in (4, 5):
+        return
+    target = (now + dt.timedelta(days=1)).replace(hour=0, minute=1, second=0, microsecond=0)
+    wait = (target - now).total_seconds()
+    print(f"朝 9 時（UTC 0 時）まで {wait / 60:.0f} 分待ちます", flush=True)
+    time.sleep(wait)
+
+
+def wait_for_snapshot():
+    """今朝 9 時の 1 時間足（UTC 23 時台）がまだ出ていなければ、1 分おきに最大 15 分待つ（ドル円で確かめる）"""
+    now = dt.datetime.now(dt.timezone.utc)
+    if now.weekday() >= 5 or (now.month, now.day) in NO_BAR:
+        return
+    t0 = int(dt.datetime(now.year, now.month, now.day, tzinfo=dt.timezone.utc).timestamp())
+    for k in range(15):
+        try:
+            if t0 - 3600 in yahoo("USDJPY", "60m", "range=1d")["t"]:
+                return
+        except Exception:
+            pass
+        print("  9 時の値がまだ無いので 1 分待つ", flush=True)
+        time.sleep(60)
+
+
 def london_date(t):
     return (dt.datetime.fromtimestamp(t, dt.timezone.utc) + dt.timedelta(hours=3)).date()
 
@@ -119,6 +148,9 @@ def r5(x, p):
 
 def main():
     use_cache = "--cache" in sys.argv
+    if not use_cache:
+        wait_for_morning()
+        wait_for_snapshot()
     now = dt.datetime.now(dt.timezone.utc)
     if use_cache:
         now = dt.datetime(2026, 9, 23, 3, 0, tzinfo=dt.timezone.utc)
