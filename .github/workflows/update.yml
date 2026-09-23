@@ -1,12 +1,14 @@
 name: update-signals
 
-# 1時間ごとに最新の値でサインを計算して data.json を作る（判定の時刻は固定しない）。
+# 20分ごとに最新の値でサインを計算して data.json を作る（判定の時刻は固定しない）。
+# GitHub の定時実行は混んでいると遅れたり飛ばされたりする（毎時1回にしたら何時間も走らなかった）ので、
+# 1時間に3回起動して、少なくとも1時間に1回は必ず新しくなるようにする。
 # data.json は main ではなく「data」枝に毎回上書き（force push）する。
 # main に毎時コミットするとリポジトリの履歴が膨らみ続けるため。
 # 画面は https://raw.githubusercontent.com/hybs02/fx/data/data.json を読む。
 on:
   schedule:
-    - cron: "23 * * * 0-5"
+    - cron: "3,23,43 * * * 0-5"
   workflow_dispatch:
 
 permissions:

@@ -105,6 +105,11 @@
   details.card[open] > summary{margin-bottom:8px;}
   .foot{font-size:11px; color:var(--sub); text-align:center; margin-top:10px; line-height:1.7;}
   .loading{text-align:center; padding:40px 0; color:var(--sub);}
+  #toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translate(-50%, 20px); opacity:0;
+    max-width:min(92vw, 480px); background:#26324a; color:var(--text); border:1px solid var(--accent); border-radius:12px;
+    padding:10px 14px; font-size:13px; font-weight:700; line-height:1.5; text-align:center; box-shadow:0 6px 24px rgba(0,0,0,.45);
+    transition:opacity .2s, transform .2s; pointer-events:none; z-index:10;}
+  #toast.show{opacity:1; transform:translate(-50%, 0);}
   dl{margin:0; line-height:1.55;}
   dt{color:var(--accent); font-weight:700; margin-top:10px; font-size:13px;}
   dd{margin:2px 0 0; font-size:12.5px;}
@@ -201,28 +206,56 @@ function lotPlan(p, slPips){
 }
 
 // ================= データ =================
-async function load(){
-  if(loading) return; loading = true; $("#refresh").innerHTML = '<span class="spin">↻</span>';
+// 12 秒で打ち切る fetch（通信が止まっても「読み込み中」のまま固まらないように）
+async function getJson(url, opts = {}){
+  const c = new AbortController(), timer = setTimeout(() => c.abort(), 12000);
+  try{
+    const r = await fetch(url, {cache:"no-store", signal:c.signal, ...opts});
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  }catch(e){ throw e.name === "AbortError" ? new Error("通信が12秒で終わらなかった") : e; }
+  finally{ clearTimeout(timer); }
+}
+// ↻ を押した時だけ GitHub API から直接読む（raw は 5 分キャッシュされ、押しても古い値が返ることがあるため）
+const API_URL = "https://api.github.com/repos/hybs02/fx/contents/data.json?ref=data";
+function toast(msg){
+  let el = $("#toast");
+  if(!el){ el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
+  el.innerHTML = msg; el.className = "show";
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.className = "", 4000);
+}
+async function load(manual = false){
+  if(loading){ if(manual) toast("いま読み込み中です…"); return; }
+  loading = true; $("#refresh").innerHTML = '<span class="spin">↻</span>';
+  const started = Date.now(), before = DATA && DATA.updatedTs;
   try{
     const t = Date.now();
+    const srcs = (manual ? [[API_URL, {headers:{Accept:"application/vnd.github.raw+json"}}]] : [])
+      .concat(DATA_URLS.map(u => [u + "?t=" + t, {}]));
     let d = null, lastErr = null;
-    for(const u of DATA_URLS){
-      try{ const r = await fetch(u + "?t=" + t, {cache:"no-store"}); if(r.ok){ d = await r.json(); break; } lastErr = new Error("HTTP " + r.status); }
-      catch(e){ lastErr = e; }
+    for(const [u, o] of srcs){
+      try{ d = await getJson(u, o); if(d && d.pairs) break; d = null; }catch(e){ lastErr = e; }
     }
     if(!d) throw lastErr || new Error("取得できません");
-    const f = await fetch("fundamentals.json?t=" + t, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
+    const f = await getJson("fundamentals.json?t=" + t).catch(() => null);
     DATA = d; if(f) FUND = f; lastFetch = Date.now();
     store.set("fx_cache2", DATA); if(f) store.set("fx_fund", FUND);
+    const wait = 500 - (Date.now() - started); if(wait > 0) await new Promise(r => setTimeout(r, wait));   // 押したことが分かるように
     render();
+    if(manual) toast(before && d.updatedTs <= before
+      ? `いまの表示が最新です（${tj(d.updatedTs)} の計算）<br><span style="font-weight:400">自動の計算は20分ごと。混んでいると遅れます</span>`
+      : `新しい計算を取り込みました（${tj(d.updatedTs)}）`);
   }catch(e){
     if(!DATA) app().innerHTML = `<div class="warn">データを読み込めませんでした（${esc(e.message)}）。通信を確認して ↻ を押してください。</div>`;
     else $("#upd").innerHTML = '<span style="color:var(--sell)">通信できず前回の値</span>';
+    if(manual) toast(`読み込めませんでした（${esc(e.message)}）`);
   }finally{ loading = false; $("#refresh").textContent = "↻"; }
 }
 // 開いている間は 10 分ごとに最新を取りに行く／しばらく裏にいた後で戻ったら取りに行く
 setInterval(() => { if(document.visibilityState === "visible") load(); }, 10 * 60e3);
 document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible" && Date.now() - lastFetch > 5 * 60e3) load(); });
+// 右上の「何分前」を1分ごとに書き直す
+setInterval(() => { if(DATA) $("#upd").innerHTML = `${tj(DATA.updatedTs, false)} の計算<br>${hrs(nowS() - DATA.updatedTs)}前`; }, 60e3);
 
 // ================= 判定（画面で決めるのは「経過時間」と「あなたの事情」だけ） =================
 // サイン（RSI・損切り幅・手仕舞いの目安）は build.py が1時間ごとに計算済み。ここでは
@@ -269,7 +302,7 @@ function decide(p){
 // ================= 描画 =================
 function render(){
   if(!DATA) return;
-  $("#upd").innerHTML = `${tj(DATA.updatedTs)} 更新`;
+  $("#upd").innerHTML = `${tj(DATA.updatedTs, false)} の計算<br>${hrs(nowS() - DATA.updatedTs)}前`;
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.v === (view === "pair" ? "home" : view)));
   if(view === "pair" && sel) return renderPair(sel);
   if(view === "stats") return renderStats();
@@ -643,7 +676,7 @@ function downloadIcs(x){
 
 // ================= 起動 =================
 document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.v; render(); window.scrollTo(0, 0); }));
-$("#refresh").addEventListener("click", load);
+$("#refresh").addEventListener("click", () => load(true));
 if(DATA) render();          // 前回の値をすぐ出してから、最新を取りに行く
 load();
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
