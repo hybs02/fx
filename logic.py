@@ -200,11 +200,13 @@ def backtest(bars, sig, sl_atr=SL_ATR, hold=HOLD, cost=0.0, start=WARMUP):
 # ---------------- 時刻に縛られない版（2026-09-23〜 アプリはこちら） ----------------
 # 1時間ごとに「その時刻で締めた日足（24時間ごとの値）」で RSI を計算し、しきい値を越えた最初の時刻をサインにする。
 # 判定の時刻を固定しないので、いつ開いても最新。検証（research/study_cut.py）:
-#   2024年7月〜（1時間足は約2年分しか取れない）で 89回・勝率64%・PF1.95。
-#   入るのが遅れると 2時間後 PF1.89／3時間後 1.71／6時間後 1.66 → 3時間以内が目安、6時間を過ぎたら見送り。
+#   2024年7月〜（1時間足は約2年分しか取れない）で 86回・勝率64%・PF1.92（DMM の取引時間だけ・出口は入った1週間後）。
+#   入るのが遅れると 2時間後 PF1.89／3時間後 1.74／6時間後 1.64／8時間後 1.49／12時間後 1.42／24時間後 1.00
+#   → 3時間以内が目安、8時間を過ぎたら見送り（GitHub の定時実行は数時間遅れることがあるので、6時間より余裕を持たせた）。
 #   22年（日足・終値だけの近似）でも、判定時刻を朝9時・欧州の昼・NYの昼にしてどれも通算で勝ち越し（1.51/1.23/1.21）。
 ENTRY_BEST_H = 3
-ENTRY_LIMIT_H = 6
+ENTRY_LIMIT_H = 8
+MAX_SAME_SIDE = 2      # 同じ通貨に同じ向きで持つのは 2 つまで（research/study_portfolio.py）
 ROLL_WARMUP = 150
 
 
@@ -253,32 +255,63 @@ def rolling_events(st, buy_at=BUY_AT, sell_at=SELL_AT):
     return ev
 
 
-def rolling_backtest(hourly, phases, st, ev, cost=0.0, sl_atr=SL_ATR, hold=HOLD):
-    """サインの時刻に入り、同じ時刻の 5 本後（≒1週間後）に出る。損切りは1時間足の高値・安値で判定。
-    1ペア1ポジション。まだ出口が来ていない取引は含めない。"""
+def dmm_open(t):
+    """DMM FX で取引できる時刻か（t は UTC 秒）。日本時間 月曜 7:00〜土曜 5:50（夏時間。冬時間は 6:50 まで）。
+    冬時間の土曜 5:50〜6:50 も閉まっている扱いにする（安全側）。
+    Yahoo の1時間足には DMM が閉まった後の足（土曜 6〜7 時）も入っているので、検証でもここで外す。"""
+    import datetime as _dt
+    j = _dt.datetime.fromtimestamp(t + 9 * 3600, _dt.timezone.utc)
+    m = j.hour * 60 + j.minute
+    wd = j.weekday()                      # 月=0 … 日=6
+    if wd == 6:
+        return False
+    if wd == 5 and m >= 5 * 60 + 50:
+        return False
+    if wd == 0 and m < 7 * 60:
+        return False
+    return True
+
+
+def exit_time(te):
+    """入った時刻 te の1週間後。取引時間外（土曜の朝など）に当たる時は、その前で最後に取引できる時刻"""
+    tx = te + 7 * 86400
+    while not dmm_open(tx):
+        tx -= 3600
+    return tx
+
+
+def rolling_backtest(hourly, phases, st, ev, cost=0.0, sl_atr=SL_ATR, hold=HOLD, delay=0):
+    """サインの時刻（から delay 時間後）に入り、入った時刻の1週間後に出る。損切りは1時間足の高値・安値で判定。
+    アプリの手順と同じ：DMM が閉まっている時刻のサインは入らない（次に開くのは締め切りの後）、
+    手仕舞いの時刻が閉まっていれば、その前で最後に取引できる時刻に出る。1ペア1ポジション。
+    まだ出口が来ていない取引は含めない。"""
     t, h, l, c = hourly["t"], hourly["h"], hourly["l"], hourly["c"]
     end = {x + 3600: i for i, x in enumerate(t)}
+    last = max(end) if end else 0
     out, busy = [], 0
     for e in ev:
         b = e["t"]
-        if not e["fresh"] or b < busy:
+        if not e["fresh"] or b < busy or not dmm_open(b):
             continue
-        s = phases[st[b]["hh"]]
-        k0 = st[b]["k"]
-        if k0 + hold >= len(s["t"]):
+        te = b + delay * 3600
+        if te not in end or not dmm_open(te):
             continue
-        tx = s["t"][k0 + hold]
-        d, en = e["dir"], c[end[b]]
+        tx = exit_time(te)
+        while tx > te and tx not in end:       # 祝日などで足が無い時は、その前の足で出る
+            tx -= 3600
+        if tx <= te or te + 7 * 86400 > last:
+            continue
+        d, en = e["dir"], c[end[te]]
         stop = en - d * sl_atr * st[b]["atr"]
         ex, how = c[end[tx]], "time"
-        for x in range(b + 3600, tx + 1, 3600):
+        for x in range(te + 3600, tx + 1, 3600):
             i = end.get(x)
             if i is None:
                 continue
             if (l[i] <= stop) if d == 1 else (h[i] >= stop):
                 ex, how, tx = stop, "sl", x
                 break
-        out.append({"t": b, "tx": tx, "dir": d, "entry": en, "exit": ex, "how": how,
+        out.append({"t": b, "te": te, "tx": tx, "dir": d, "entry": en, "exit": ex, "how": how,
                     "ret": ((ex - en) * d - cost) / en * 100})
         busy = tx
     return out
@@ -286,16 +319,55 @@ def rolling_backtest(hourly, phases, st, ev, cost=0.0, sl_atr=SL_ATR, hold=HOLD)
 
 def next_hour_triggers(st, tlast, buy_at=BUY_AT, sell_at=SELL_AT, n=RSI_N):
     """次の1時間の終値がいくら以下（以上）なら RSI がしきい値を越えるか。
-    次の時刻の RSI は『その時刻で締めた日足』の続きなので、その系列の最後の要素（≒24時間前）から逆算する。"""
+    次の時刻の RSI は『その時刻で締めた日足』の続きなので、その系列の最後の要素（≒24時間前）の
+    Wilder の平均上昇幅 AG・平均下落幅 AL・終値 C から逆算する（r = しきい値の上昇/下落の比）。
+      下がる時 x: AG'=(n-1)AG/n, AL'=((n-1)AL+x)/n  → AG'/AL' ≤ r ⇔ x ≥ (n-1)(AG/r − AL)
+      上がる時 u: AG'=((n-1)AG+u)/n, AL'=(n-1)AL/n  → AG'/AL' ≤ r ⇔ u ≤ (n-1)(r·AL − AG)
+    24時間前の時点ですでにしきい値の外にいる（AG/AL ≤ r）時は、少し上がっても外のままなので『上がる時』の式になる。
+    （以前は常に下がる時の式を使っていて、その場合に現在値より上に「この値以下なら買い」が出ていた）"""
     now = st[tlast]["rsi"]
-    prev = [x for x in st if (x // 3600) % 24 == ((tlast + 3600) // 3600) % 24 and x <= tlast]
+    nxt = ((tlast + 3600) // 3600) % 24
+    prev = [x for x in st if (x // 3600) % 24 == nxt and x <= tlast]
     if not prev:
         return None, None
     q = st[max(prev)]
+    ag, al, c = q["ag"], q["al"], q["c"]
+    if ag is None or al is None:
+        return None, None
     r, R = buy_at / (100 - buy_at), sell_at / (100 - sell_at)
-    buy = q["c"] - (n - 1) * (q["ag"] / r - q["al"]) if now > buy_at and q["al"] is not None else None
-    sell = q["c"] + (n - 1) * (R * q["al"] - q["ag"]) if now < sell_at and q["ag"] is not None else None
+    buy = sell = None
+    if now > buy_at:                      # 今が 25 より上なら、次の1時間で 25 以下に入れば『入った最初』
+        buy = c - (n - 1) * (ag / r - al) if ag >= r * al else c + (n - 1) * (r * al - ag)
+    if now < sell_at:
+        sell = c + (n - 1) * (R * al - ag) if ag <= R * al else c - (n - 1) * (ag / R - al)
     return buy, sell
+
+
+def exposure(pair, d):
+    """通貨ごとの向き（+1 買い持ち / -1 売り持ち）。例 EURJPY の買い → EUR +1, JPY -1"""
+    return {pair[:3]: d, pair[3:]: -d}
+
+
+def portfolio(trades, cap=MAX_SAME_SIDE):
+    """資金に対する増え方と最大の落ち込み（1回のリスク＝資金の1%あたり・単利）。
+    trades: {pair, dir, t0, t1, R}（R＝損益÷損切り幅）。同じ通貨に同じ向きで cap 本を持っている時の新しいサインは見送る。
+    サインは同じ日に固まって出る（22年で半分以上が、同じ通貨・同じ向きの取引を持っている最中に出た）ので、
+    1回あたりのリスクだけでなく、同時に持つ本数を抑えないと資金の落ち込みが大きくなる。"""
+    trades = sorted(trades, key=lambda x: x["t0"])
+    open_, eq, peak, mdd, taken = [], 0.0, 0.0, 0.0, 0
+    def close_until(t):
+        nonlocal eq, peak, mdd
+        for o in sorted([o for o in open_ if o["t1"] <= t], key=lambda o: o["t1"]):
+            open_.remove(o)
+            eq += o["R"]; peak = max(peak, eq); mdd = min(mdd, eq - peak)
+    for x in trades:
+        close_until(x["t0"])
+        ex = exposure(x["pair"], x["dir"])
+        if cap and any(sum(1 for o in open_ if exposure(o["pair"], o["dir"]).get(c) == s) >= cap for c, s in ex.items()):
+            continue
+        open_.append(x); taken += 1
+    close_until(float("inf"))
+    return {"n": taken, "total": round(eq, 1), "mdd": round(mdd, 1)}
 
 
 def stats(trades):

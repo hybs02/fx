@@ -21,8 +21,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
+      - name: 前回の結果を data 枝から取る（取れなかったペアを埋めるのに使う）
+        run: |
+          git fetch -q origin data && git show origin/data:data.json > prev.json || rm -f prev.json
 
       - uses: actions/setup-python@v5
         with:
