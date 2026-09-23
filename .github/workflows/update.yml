@@ -1,0 +1,45 @@
+name: update-signals
+
+# 毎朝 9 時（日本時間）の値でサインを計算して data.json を更新する。
+# Yahoo の日足は UTC 0 時（＝日本の朝 9 時）の値で区切られているので、その直後に走らせる。
+# GitHub の定時実行は混んでいると数十分遅れることがあるので、9:37 にも予備で走らせる。
+# 日中は 3 時間ごとに「いまの値」「短い時間足」だけ新しくする（サインは朝 9 時の値で固定）。
+on:
+  schedule:
+    - cron: "7 0 * * 1-5"
+    - cron: "37 0 * * 1-5"
+    - cron: "17 3-21/3 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-signals
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: サインを計算して data.json を作る
+        run: python build.py
+
+      - name: 結果をコミット
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          if git diff --staged --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "シグナル更新 $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
+            git pull --rebase
+            git push
+          fi
