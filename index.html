@@ -25,15 +25,12 @@
     font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Hiragino Sans","Meiryo",sans-serif;
     padding:calc(10px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom));
     font-size:14px; line-height:1.55; -webkit-text-size-adjust:100%;}
-  button{font:inherit; color:inherit;}
+  button,input,select{font:inherit; color:inherit;}
   .top{display:flex; align-items:center; gap:8px; margin:2px 0 10px;}
   .top h1{font-size:18px; margin:0; flex:1;}
   .top .upd{font-size:11px; color:var(--sub); text-align:right; line-height:1.3;}
-  .iconbtn{border:1px solid var(--line); background:var(--card); border-radius:10px; min-width:40px; height:36px;
-    padding:0 10px; font-size:13px; font-weight:700;}
-  .iconbtn:active{background:var(--card2);}
-  .spin{display:inline-block; animation:spin 1s linear infinite;}
-  @keyframes spin{to{transform:rotate(360deg);}}
+  .iconbtn{border:1px solid var(--line); background:var(--card); border-radius:10px; min-width:40px; height:36px; padding:0 10px; font-size:13px; font-weight:700;}
+  .spin{display:inline-block; animation:spin 1s linear infinite;} @keyframes spin{to{transform:rotate(360deg);}}
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px;}
   .card h2{font-size:14px; margin:0 0 8px; color:var(--accent); display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
   .card h2 small{font-size:11px; color:var(--sub); font-weight:600;}
@@ -42,18 +39,13 @@
   .hero .big{font-size:22px; font-weight:800; margin:2px 0 4px; line-height:1.35;}
   .hero.go-buy{background:var(--buyBg); border-color:var(--buy);}
   .hero.go-sell{background:var(--sellBg); border-color:var(--sell);}
-  .hero.wait{background:var(--card);}
-  .hero .go-row{display:flex; align-items:center; gap:10px; padding:10px 12px; margin-top:8px; border-radius:12px;
-    background:rgba(0,0,0,.25); cursor:pointer;}
+  .hero .go-row{display:flex; align-items:center; gap:10px; padding:10px 12px; margin-top:8px; border-radius:12px; background:rgba(0,0,0,.25); cursor:pointer;}
   .hero .go-row b{font-size:17px;}
   .hero .go-row .arrow{margin-left:auto; color:var(--sub); font-size:18px;}
   .note{font-size:12px; color:var(--sub); line-height:1.65;}
   .note b{color:var(--text);}
-  .banner{background:var(--accBg); border:1px solid var(--accent); color:var(--accent);
-    border-radius:12px; padding:10px 12px; font-size:12.5px; line-height:1.6; margin-bottom:12px;}
-  .warn{background:var(--sellBg); border:1px solid var(--sell); color:#ffb3ba;
-    border-radius:12px; padding:10px 12px; font-size:12.5px; line-height:1.6; margin-bottom:12px; font-weight:600;}
-  /* ペア一覧 */
+  .banner{background:var(--accBg); border:1px solid var(--accent); color:var(--accent); border-radius:12px; padding:10px 12px; font-size:12.5px; line-height:1.6; margin-bottom:12px;}
+  .warn{background:var(--sellBg); border:1px solid var(--sell); color:#ffb3ba; border-radius:12px; padding:10px 12px; font-size:12.5px; line-height:1.6; margin-bottom:12px; font-weight:600;}
   .prow{display:flex; align-items:center; gap:10px; padding:11px 4px; border-bottom:1px solid var(--line); cursor:pointer; min-height:52px;}
   .prow:last-child{border-bottom:none;}
   .prow:active{background:var(--card2);}
@@ -65,12 +57,10 @@
   .gbar .zs{position:absolute; right:0; top:0; bottom:0; width:25%; background:rgba(255,93,108,.35);}
   .gbar .dot{position:absolute; top:-3px; width:4px; height:14px; margin-left:-2px; border-radius:2px; background:var(--text);}
   .gnum{font-size:11px; color:var(--sub); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .chip{flex:0 0 auto; font-size:11.5px; font-weight:800; padding:4px 8px; border-radius:8px; white-space:nowrap;
-    background:rgba(136,150,179,.16); color:var(--sub);}
+  .chip{flex:0 0 auto; font-size:11.5px; font-weight:800; padding:4px 8px; border-radius:8px; white-space:nowrap; background:rgba(136,150,179,.16); color:var(--sub);}
   .chip.buy{background:rgba(35,196,131,.22); color:var(--buy);}
   .chip.sell{background:rgba(255,93,108,.22); color:var(--sell);}
   .chip.acc{background:var(--accBg); color:var(--accent);}
-  /* 詳細 */
   .back{background:none; border:none; color:var(--accent); font-size:14px; font-weight:700; padding:8px 0; margin-bottom:4px;}
   .dec{border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--neu); background:rgba(136,150,179,.1);}
   .dec.buy{border-color:var(--buy); background:var(--buyBg);}
@@ -88,19 +78,14 @@
   .steps{background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:10px;}
   .steps h3{font-size:13px; margin:2px 0 6px; color:var(--accent);}
   .steps h4{font-size:12px; color:var(--sub); margin:10px 0 3px; padding-top:8px; border-top:1px dashed var(--line);}
-  .steps h4:first-of-type{border-top:none; padding-top:0; margin-top:2px;}
   .st{font-size:12.5px; line-height:1.75; margin:2px 0;}
-  .kbd{display:inline-block; padding:0 6px; border:1px solid #3a4763; border-radius:6px; background:#1d2638;
-    font-weight:700; line-height:1.5; white-space:nowrap;}
+  .kbd{display:inline-block; padding:0 6px; border:1px solid #3a4763; border-radius:6px; background:#1d2638; font-weight:700; line-height:1.5; white-space:nowrap;}
   .val{font-weight:800; color:var(--accent);}
   .slbox{margin:6px 0; padding:8px 10px; border-radius:10px; background:var(--sellBg); color:#ffb3ba; font-size:12.5px; font-weight:600;}
-  .exbox{margin:6px 0; padding:8px 10px; border-radius:10px; background:var(--accBg); color:var(--accent); font-size:12.5px; font-weight:600;}
   .field{display:flex; align-items:center; gap:8px; margin:8px 0;}
   .field label{flex:0 0 118px; font-size:12.5px; color:var(--sub);}
-  .field input,.field select{flex:1; min-width:0; padding:10px; border-radius:10px; border:1px solid var(--line);
-    background:#0c111c; color:var(--text); font-size:16px; font-weight:700;}
-  .btn{display:block; width:100%; padding:13px; border-radius:12px; border:1px solid var(--accent); background:var(--accent);
-    color:#1a1300; font-weight:800; font-size:15px; margin-top:10px;}
+  .field input,.field select{flex:1; min-width:0; padding:10px; border-radius:10px; border:1px solid var(--line); background:#0c111c; color:var(--text); font-size:16px; font-weight:700;}
+  .btn{display:block; width:100%; padding:13px; border-radius:12px; border:1px solid var(--accent); background:var(--accent); color:#1a1300; font-weight:800; font-size:15px; margin-top:10px;}
   .btn.ghost{background:transparent; color:var(--accent);}
   .btn.red{background:transparent; color:#ffb3ba; border-color:var(--sell);}
   .btn:active{opacity:.8;}
@@ -113,7 +98,6 @@
   th,td{padding:6px 4px; border-bottom:1px solid var(--line); text-align:right;}
   th:first-child,td:first-child{text-align:left;}
   th{color:var(--sub); font-weight:600; font-size:11.5px;}
-  details{margin:0;}
   details.card > summary{cursor:pointer; color:var(--accent); font-weight:700; list-style:none; display:flex; justify-content:space-between;}
   details.card > summary::after{content:"＋"; color:var(--sub);}
   details.card[open] > summary::after{content:"－";}
@@ -141,12 +125,12 @@
     <button class="iconbtn" id="refresh" aria-label="更新">↻</button>
   </div>
   <div class="tabs" id="tabs">
-    <button data-v="home" class="on">きょう</button>
+    <button data-v="home" class="on">いま</button>
     <button data-v="stats">成績</button>
     <button data-v="set">設定・用語</button>
   </div>
   <div id="app"><div class="loading">読み込み中…</div></div>
-  <div class="foot">毎朝9時の値で自動判定（GitHub が計算・APIキー不要）<br>※参考情報です。必ず勝てる方法はありません。最終判断は自己責任で。</div>
+  <div class="foot">1時間ごとに自動で判定し直しています（GitHub が計算・APIキー不要）<br>※参考情報です。必ず勝てる方法はありません。最終判断は自己責任で。</div>
 
 <script>
 "use strict";
@@ -154,102 +138,101 @@
 const PAIRS = ["USDJPY","EURJPY","GBPJPY","AUDJPY","NZDJPY","CADJPY","CHFJPY","EURUSD","GBPUSD","AUDUSD","EURGBP"];
 const JP = {USD:"米ドル",JPY:"円",EUR:"ユーロ",GBP:"ポンド",AUD:"豪ドル",NZD:"NZドル",CAD:"カナダドル",CHF:"スイスフラン"};
 const MINI = {USDJPY:"USM/JPY",EURJPY:"EUM/JPY",GBPJPY:"GBM/JPY",AUDJPY:"AUM/JPY"};   // DMM のミニ（1Lot＝1,000通貨）
+// データは毎時の自動計算が専用の枝（data）に上書きする。リポジトリの履歴を膨らませないため
+const DATA_URLS = ["https://raw.githubusercontent.com/hybs02/fx/data/data.json", "data.json"];
 const $ = s => document.querySelector(s);
 const app = () => $("#app");
 const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-let DATA = store.get("fx_cache", null), FUND = store.get("fx_fund", null);
+let DATA = store.get("fx_cache2", null), FUND = store.get("fx_fund", null);
 let balance = +store.get("fx_bal", 0) || 0;
 let riskPct = +store.get("fx_risk", 2) || 2;
-let positions = store.get("fx_pos", []);
-let view = "home", sel = null, loading = false, lastFetch = 0, pollTimer = null;
+let positions = store.get("fx_pos", []).map(x => x.t ? x : {...x, t: Date.parse(x.date + "T00:00:00Z") / 1000, exitT: Date.parse(x.exit + "T00:00:00Z") / 1000});
+let view = "home", sel = null, loading = false, lastFetch = 0;
 
 const slash = p => p.slice(0,3) + "/" + p.slice(3);
 const jpName = p => JP[p.slice(0,3)] + "/" + JP[p.slice(3)];
 const pipOf = p => p.endsWith("JPY") ? 0.01 : 0.0001;
 const dpOf = p => p.endsWith("JPY") ? 3 : 5;
 const fx = (p, v) => v == null ? "—" : (+v).toFixed(dpOf(p));
-const yen = v => "¥" + Math.round(v).toLocaleString();
+const yen = v => (v < 0 ? "-¥" : "¥") + Math.abs(Math.round(v)).toLocaleString();
 const sgn = v => (v > 0 ? "+" : "") + v;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const W = ["日","月","火","水","木","金","土"];
-function jd(iso){ if(!iso) return "—"; const [y,m,d] = iso.split("-").map(Number); const w = new Date(Date.UTC(y,m-1,d)).getUTCDay(); return `${m}/${d}(${W[w]})`; }
-// 日本時間の「いま」
-function nowJ(){ const d = new Date(Date.now() + 9*3600e3);
-  return {date:d.toISOString().slice(0,10), h:d.getUTCHours(), m:d.getUTCMinutes(), dow:d.getUTCDay()}; }
-function addDaysIso(iso, n){ const [y,m,d] = iso.split("-").map(Number); return new Date(Date.UTC(y,m-1,d+n)).toISOString().slice(0,10); }
+const nowS = () => Date.now() / 1000;
+// 時刻（UNIX 秒）→ 日本時間の表示
+function tj(t, withDay = true){
+  const d = new Date(t * 1000 + 9 * 3600e3);
+  const hm = `${d.getUTCHours()}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+  return withDay ? `${d.getUTCMonth() + 1}/${d.getUTCDate()}(${W[d.getUTCDay()]}) ${hm}` : hm;
+}
+function jd(iso){ const [y,m,d] = iso.split("-").map(Number); return `${m}/${d}(${W[new Date(Date.UTC(y,m-1,d)).getUTCDay()]})`; }
+const isoJ = t => new Date(t * 1000 + 9 * 3600e3).toISOString().slice(0, 10);
+const isoAdd = (iso, n) => new Date(Date.parse(iso + "T00:00:00Z") + n * 86400e3).toISOString().slice(0, 10);
+function hrs(sec){ const m = Math.max(0, Math.round(sec / 60)); return m >= 60 ? `${Math.floor(m / 60)}時間${m % 60 ? (m % 60) + "分" : ""}` : `${m}分`; }
+// 為替が動いているか（土曜の朝〜月曜の朝は休み）
+function marketOpen(){
+  const d = new Date(Date.now() + 9 * 3600e3), w = d.getUTCDay(), h = d.getUTCHours();
+  return !((w === 6 && h >= 7) || w === 0 || (w === 1 && h < 7));
+}
 
 // 1Lot（1万通貨）で 1pip 動いた時の円
 function yenPerPip(p){
-  const q = p.slice(3);
+  const q = p.slice(3), P = DATA && DATA.pairs;
   if(q === "JPY") return 100;
-  const P = DATA && DATA.pairs;
   if(q === "USD" && P && P.USDJPY) return P.USDJPY.price;
   if(q === "GBP" && P && P.GBPJPY) return P.GBPJPY.price;
   return 150;
 }
 // 資金とリスク%から Lot 数（ミニがあるペアはミニも見る）
 function lotPlan(p, slPips){
-  const perLot = slPips * yenPerPip(p);          // 1Lot で損切りまで行った時の損
+  const perLot = slPips * yenPerPip(p);
   if(!(balance > 0)) return {set:false, perLot};
   const cap = balance * riskPct / 100;
   const lots = Math.floor(cap / perLot);
-  if(lots >= 1) return {set:true, lots, mini:false, units:lots*10000, loss:lots*perLot, cap, perLot};
+  if(lots >= 1) return {set:true, lots, mini:false, units:lots * 10000, loss:lots * perLot, cap, perLot};
   if(MINI[p]){
-    const ml = Math.floor(cap / (perLot/10));
-    if(ml >= 1) return {set:true, lots:ml, mini:true, units:ml*1000, loss:ml*perLot/10, cap, perLot};
+    const ml = Math.floor(cap / (perLot / 10));
+    if(ml >= 1) return {set:true, lots:ml, mini:true, units:ml * 1000, loss:ml * perLot / 10, cap, perLot};
   }
   return {set:true, lots:0, cap, perLot};
 }
 
 // ================= データ =================
-async function load(force){
+async function load(){
   if(loading) return; loading = true; $("#refresh").innerHTML = '<span class="spin">↻</span>';
   try{
     const t = Date.now();
-    const [d, f] = await Promise.all([
-      fetch("data.json?t=" + t, {cache:"no-store"}).then(r => { if(!r.ok) throw new Error("data " + r.status); return r.json(); }),
-      fetch("fundamentals.json?t=" + t, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null)
-    ]);
+    let d = null, lastErr = null;
+    for(const u of DATA_URLS){
+      try{ const r = await fetch(u + "?t=" + t, {cache:"no-store"}); if(r.ok){ d = await r.json(); break; } lastErr = new Error("HTTP " + r.status); }
+      catch(e){ lastErr = e; }
+    }
+    if(!d) throw lastErr || new Error("取得できません");
+    const f = await fetch("fundamentals.json?t=" + t, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(() => null);
     DATA = d; if(f) FUND = f; lastFetch = Date.now();
-    store.set("fx_cache", DATA); if(f) store.set("fx_fund", FUND);
+    store.set("fx_cache2", DATA); if(f) store.set("fx_fund", FUND);
     render();
   }catch(e){
-    if(!DATA) app().innerHTML = `<div class="card"><div class="warn" style="margin:0">データを読み込めませんでした（${esc(e.message)}）。通信を確認して ↻ を押してください。</div></div>`;
-    else toastOffline();
-  }finally{
-    loading = false; $("#refresh").textContent = "↻"; schedulePoll();
-  }
+    if(!DATA) app().innerHTML = `<div class="warn">データを読み込めませんでした（${esc(e.message)}）。通信を確認して ↻ を押してください。</div>`;
+    else $("#upd").innerHTML = '<span style="color:var(--sell)">通信できず前回の値</span>';
+  }finally{ loading = false; $("#refresh").textContent = "↻"; }
 }
-function toastOffline(){ const u = $("#upd"); if(u) u.innerHTML = '<span style="color:var(--sell)">通信できず前回の値</span>'; }
+// 開いている間は 10 分ごとに最新を取りに行く／しばらく裏にいた後で戻ったら取りに行く
+setInterval(() => { if(document.visibilityState === "visible") load(); }, 10 * 60e3);
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible" && Date.now() - lastFetch > 5 * 60e3) load(); });
 
-// 今朝 9 時の判定がまだ届いていない（平日 9 時過ぎ）なら、2 分ごとに取りに行く
-function waitingForMorning(){
-  if(!DATA) return false;
-  const n = nowJ();
-  if(n.dow === 0 || n.dow === 6) return false;
-  return n.h >= 9 && DATA.latest < n.date;
-}
-function schedulePoll(){
-  clearTimeout(pollTimer);
-  if(waitingForMorning()) pollTimer = setTimeout(() => { if(document.visibilityState === "visible") load(); else schedulePoll(); }, 120000);
-}
-document.addEventListener("visibilitychange", () => {
-  if(document.visibilityState === "visible" && Date.now() - lastFetch > 10*60e3) load();
-  else if(document.visibilityState === "visible") render();
-});
-
-// ================= 判定（画面で決めるのは「時刻」と「あなたの事情」だけ） =================
-// サインそのもの（RSI・損切り幅・手仕舞い日）は build.py が計算済み。ここでは
-//   ・今日のサインか／12時を過ぎていないか
-//   ・介入警戒（ドル円の買い）・資金・同じペアを保有中か・イベント
+// ================= 判定（画面で決めるのは「経過時間」と「あなたの事情」だけ） =================
+// サイン（RSI・損切り幅・手仕舞いの目安）は build.py が1時間ごとに計算済み。ここでは
+//   ・サインから何時間たったか（3時間以内が目安・6時間を過ぎたら見送り）
+//   ・介入警戒（ドル円の買い）・資金・同じペアを保有中か・発表
 // を突き合わせて「入る／見送り／様子見」を1つに決める。
-function eventsFor(p, from, days){
+function eventsFor(p, fromIso, days){
   if(!FUND) return [];
-  const a = p.slice(0,3), b = p.slice(3), to = addDaysIso(from, days);
-  return (FUND.events || []).filter(e => (e.cur === a || e.cur === b) && e.date >= from && e.date <= to);
+  const a = p.slice(0,3), b = p.slice(3), to = isoAdd(fromIso, days);
+  return (FUND.events || []).filter(e => (e.cur === a || e.cur === b) && e.date >= fromIso && e.date <= to);
 }
 function alertFor(p, price){
   const al = FUND && FUND.pairAlerts && FUND.pairAlerts[p];
@@ -259,227 +242,185 @@ function alertFor(p, price){
   return null;
 }
 function decide(p){
-  const pd = DATA.pairs[p], n = nowJ(), rule = DATA.rule;
+  const pd = DATA.pairs[p], r = DATA.rule, S = pd.sig;
+  if(!S) return {kind:"WAIT", rows:[]};
   const rows = [], ng = [], wa = [];
   const add = (s, t) => { rows.push({s, t}); if(s === "ng") ng.push(t); if(s === "wa") wa.push(t); };
-  if(!pd.sig) return {kind:"WAIT", rows:[]};
-  const dir = pd.sig, dn = dir === 1 ? "買い" : "売り";
-  const today = pd.date === n.date;
+  const dir = S.dir, dn = dir === 1 ? "買い" : "売り";
   const mine = positions.find(x => x.pair === p);
-  if(mine && mine.date === pd.date)
-    return {kind:"DONE", dir, dn, rows:[{s:"ok", t:`記録済み：${jd(mine.date)} に ${fx(p, mine.entry)} で入った。手仕舞いは ${jd(mine.exit)} の朝9〜12時`}], ng:[], wa:[], today};
-  if(!today) add("ng", `サイン：${jd(pd.date)}のサイン。初日だけ有効（2日目に入ると負け越し）`);
-  else if(n.h >= rule.deadline) add("ng", `時刻：${rule.deadline}時を過ぎた（遅れて入ると成績が落ちる。次のサインを待つ）`);
-  else add("ok", `サイン：今朝 RSI ${pd.rsiPrev}→${pd.rsi} で${dir === 1 ? rule.buyAt + "以下" : rule.sellAt + "以上"}に入った（初日）`);
+  if(mine && mine.t >= S.t - 3600)
+    return {kind:"DONE", dir, dn, rows:[{s:"ok", t:`記録済み：${tj(mine.t)} に ${fx(p, mine.entry)} で入った。手仕舞いは ${tj(mine.exitT)} ごろ`}], ng:[], wa:[]};
+  const age = nowS() - S.t, left = r.limit * 3600 - age;
+  if(left <= 0) add("ng", `時間：サインから${r.limit}時間を過ぎた（遅く入るほど成績が下がる。次のサインを待つ）`);
+  else if(age > r.best * 3600) add("wa", `時間：サインから${hrs(age)}。${r.best}時間以内が目安（あと${hrs(left)}で締め切り）`);
+  else add("ok", `サイン：${tj(S.t)} に RSI ${S.from}→${S.to} で${dir === 1 ? r.buyAt + "以下" : r.sellAt + "以上"}に入った（${hrs(age)}前）`);
   const al = alertFor(p, pd.price);
   if(al && dir === 1) add("ng", "介入警戒：ドル円は介入が入りやすい水準。『買い』は入らない");
-  if(positions.some(x => x.pair === p)) add("ng", "保有中：このペアはもう持っている（1ペア1つまで）");
-  const lp = lotPlan(p, pd.atrPips * rule.slAtr);
+  if(mine) add("ng", "保有中：このペアはもう持っている（1ペア1つまで）");
+  const lp = lotPlan(p, S.atrPips * r.slAtr);
   if(!lp.set) add("wa", "資金：未設定（設定タブで資金を入れると Lot 数と損失額が出る）");
   else if(lp.lots < 1) add("ng", `資金：最小の1Lotでも損切り時の損が${yen(lp.perLot / (MINI[p] ? 10 : 1))}で、上限${yen(lp.cap)}（資金の${riskPct}%）を超える`);
   else add("ok", `資金：${lp.mini ? "ミニ " : ""}${lp.lots}Lot なら損切り時の損は${yen(lp.loss)}（資金の${(lp.loss / balance * 100).toFixed(1)}%）`);
-  const ev = eventsFor(p, pd.date, 1);
-  if(ev.length) add("wa", `イベント：${ev.map(e => `${jd(e.date)} ${e.time} ${e.name}`).join("、")}。値が飛びやすい（損切りは必ず置く）`);
-  const kind = ng.length ? "NO" : "GO";
-  return {kind, dir, dn, rows, ng, wa, lp, today};
+  const ev = eventsFor(p, isoJ(nowS()), 1);
+  if(ev.length) add("wa", `発表：${ev.map(e => `${jd(e.date)} ${e.time} ${e.name}`).join("、")}。値が飛びやすい（損切りは必ず置く）`);
+  return {kind: ng.length ? "NO" : "GO", dir, dn, rows, ng, wa, lp};
 }
 
 // ================= 描画 =================
 function render(){
   if(!DATA) return;
-  const n = nowJ();
-  const age = `${DATA.updated.slice(5).replace("-", "/")} 更新`;
-  $("#upd").innerHTML = age;
+  $("#upd").innerHTML = `${tj(DATA.updatedTs)} 更新`;
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.v === (view === "pair" ? "home" : view)));
   if(view === "pair" && sel) return renderPair(sel);
   if(view === "stats") return renderStats();
   if(view === "set") return renderSettings();
   renderHome();
 }
-
 function statusOf(p){
-  const pd = DATA.pairs[p], n = nowJ(), r = DATA.rule;
-  if(pd.sig && pd.date === n.date){
-    if(n.h < r.deadline) return {cls: pd.sig === 1 ? "buy" : "sell", t: (pd.sig === 1 ? "買い" : "売り") + " 12時まで", rank:0};
-    return {cls:"", t:"締切（" + (pd.sig === 1 ? "買い" : "売り") + "）", rank:2};
+  const pd = DATA.pairs[p], r = DATA.rule, S = pd.sig;
+  if(S){
+    const left = r.limit * 3600 - (nowS() - S.t);
+    if(left > 0) return {cls: S.dir === 1 ? "buy" : "sell", t: `${S.dir === 1 ? "買い" : "売り"} あと${hrs(left)}`, rank:0};
   }
-  const act = (pd.active || []).find(a => a.bars < r.hold && !a.stopped);
-  if(act) return {cls:"acc", t:`${act.dir === 1 ? "買い" : "売り"}進行中`, rank:3};
+  const act = (pd.active || []).find(a => !a.done && !a.stopped);
+  if(act) return {cls:"acc", t:`${act.dir === 1 ? "買い" : "売り"}の保有期間`, rank:3};
   if(pd.rsi <= r.buyAt + 5 && pd.rsi > r.buyAt) return {cls:"acc", t:"買いまで あと少し", rank:1};
   if(pd.rsi >= r.sellAt - 5 && pd.rsi < r.sellAt) return {cls:"acc", t:"売りまで あと少し", rank:1};
   return {cls:"", t:"", rank:4};
 }
-// 一覧の行に出す「次の朝9時にいくらならサインか」（近い方だけ）
 function nearTrig(p){
   const pd = DATA.pairs[p], t = pd.trig;
   const pb = t.buy ? (1 - t.buy / pd.price) * 100 : 1e9, ps = t.sell ? (t.sell / pd.price - 1) * 100 : 1e9;
   if(pb === 1e9 && ps === 1e9) return "";
-  return pb <= ps ? `明朝 ${fx(p, t.buy)}以下で買い` : `明朝 ${fx(p, t.sell)}以上で売り`;
+  return pb <= ps ? `${fx(p, t.buy)}以下で買い` : `${fx(p, t.sell)}以上で売り`;
 }
-
+function staleNote(){
+  const age = nowS() - DATA.updatedTs;
+  if(marketOpen() && age > 3 * 3600) return `<div class="warn">⚠ 最後の更新から${hrs(age)}たっています（GitHub の自動実行が遅れている可能性）。数値は ${tj(DATA.updatedTs)} 時点です。</div>`;
+  return "";
+}
 function heroHtml(){
-  const n = nowJ(), r = DATA.rule;
-  const weekend = n.dow === 0 || n.dow === 6;
-  if(waitingForMorning()){
-    return `<div class="hero wait"><div class="k">${jd(n.date)}</div>
-      <div class="big">今朝9時の判定を取り込み中…</div>
-      <div class="note">毎朝9時の値で自動計算しています（ふだん9時10分〜30分ごろ）。この画面は2分ごとに自動で確かめます。<br>下は前の営業日（${jd(DATA.latest)}）の状態です。</div></div>`;
-  }
-  const todays = PAIRS.filter(p => DATA.pairs[p].sig && DATA.pairs[p].date === n.date);
-  if(todays.length && n.h < r.deadline){
-    const left = (r.deadline - n.h - 1) * 60 + (60 - n.m);
-    const rows = todays.map(p => {
-      const d = decide(p), pd = DATA.pairs[p];
-      const ok = d.kind === "GO";
-      const msg = d.kind === "DONE" ? "入った（記録済み）" : ok ? "入ってOK" + (d.wa.length ? "（△注意あり）" : "") : "サインは出たが見送り：" + esc(d.ng[0].split("：")[0]);
-      return `<div class="go-row" data-p="${p}">
-        <div><b style="color:${pd.sig === 1 ? "var(--buy)" : "var(--sell)"}">${slash(p)} ${d.dn}</b>
-        <div class="note">${msg}</div></div>
-        <div class="arrow">›</div></div>`;
+  const r = DATA.rule;
+  if(!marketOpen()) return `<div class="hero"><div class="k">土日は為替が休み</div><div class="big">月曜の朝に再開します</div>
+    <div class="note">下は金曜の終わりの状態です。</div></div>`;
+  const live = PAIRS.filter(p => { const S = DATA.pairs[p].sig; return S && nowS() - S.t < r.limit * 3600; });
+  if(live.length){
+    const rows = live.map(p => {
+      const d = decide(p), S = DATA.pairs[p].sig;
+      const msg = d.kind === "DONE" ? "入った（記録済み）" : d.kind === "GO" ? `入ってOK${d.wa.length ? "（△注意あり）" : ""}・あと${hrs(r.limit * 3600 - (nowS() - S.t))}`
+        : "サインは出たが見送り：" + esc(d.ng[0].split("：")[0]);
+      return `<div class="go-row" data-p="${p}"><div><b style="color:${S.dir === 1 ? "var(--buy)" : "var(--sell)"}">${slash(p)} ${d.dn}</b>
+        <div class="note">${tj(S.t)} 点灯　${msg}</div></div><div class="arrow">›</div></div>`;
     }).join("");
-    const kinds = todays.map(p => decide(p).kind);
-    const anyGo = kinds.includes("GO"), allDone = kinds.every(k => k === "DONE" || k === "NO") && kinds.includes("DONE");
-    const one = DATA.pairs[todays[0]].sig;
-    return `<div class="hero ${anyGo ? (one === 1 ? "go-buy" : "go-sell") : "wait"}">
-      <div class="k">${jd(n.date)} 今朝9時の判定</div>
-      <div class="big">${anyGo ? "きょう入るペアがあります" : allDone ? "きょうの取引は記録済み" : "サインは出たが、きょうは見送り"}</div>
-      <div class="note">入るのは<b>${r.deadline}時まで</b>（あと${Math.floor(left / 60)}時間${left % 60}分）。タップで注文手順へ。</div>${rows}</div>`;
-  }
-  if(todays.length){
-    return `<div class="hero wait"><div class="k">${jd(n.date)}</div><div class="big">きょうのサインは締め切りました</div>
-      <div class="note">${todays.map(slash).join("・")} にサインが出ましたが、入るのは${r.deadline}時までです（遅れて入ると成績が落ちると検証で分かっています）。次のサインを待ちましょう。</div></div>`;
+    const kinds = live.map(p => decide(p).kind), go = kinds.includes("GO");
+    const first = DATA.pairs[live[0]].sig.dir;
+    return `<div class="hero ${go ? (first === 1 ? "go-buy" : "go-sell") : ""}"><div class="k">いまのサイン</div>
+      <div class="big">${go ? "いま入れるペアがあります" : kinds.includes("DONE") ? "サインの取引は記録済み" : "サインは出たが見送り"}</div>
+      <div class="note">サインから<b>${r.best}時間以内</b>が目安（${r.limit}時間で締め切り）。タップで注文手順へ。</div>${rows}</div>`;
   }
   const near = PAIRS.map(p => ({p, s:statusOf(p)})).filter(x => x.s.rank === 1);
-  return `<div class="hero wait"><div class="k">${weekend ? "土日は相場が休み" : jd(DATA.latest) + " 9時の判定"}</div>
-    <div class="big">${weekend ? "次の判定は月曜の朝9時" : "きょうは入るペアなし"}</div>
-    <div class="note">${weekend ? "" : "<b>何もしないのが正解</b>です。サインは11ペア合わせて月に2回ほどしか出ません。"}
+  return `<div class="hero"><div class="k">${tj(DATA.latestT)} までの値で判定</div>
+    <div class="big">いまはサインなし</div>
+    <div class="note"><b>何もしないのが正解</b>です。サインは11ペア合わせて月に3回ほど。1時間ごとに自動で判定し直します。
     ${near.length ? `<br>サインが近いペア：${near.map(x => `<b>${slash(x.p)}</b>（${x.s.t.replace(" あと少し", "")}）`).join("、")}` : ""}</div></div>`;
 }
-
 function positionsHtml(){
-  const n = nowJ();
+  const now = nowS();
   const mine = positions.map((x, k) => {
     const pd = DATA.pairs[x.pair]; if(!pd) return "";
     const live = pd.live ? pd.live.p : pd.price;
-    const units = x.units || 10000;
-    const pnl = (live - x.entry) * x.dir * units * (yenPerPip(x.pair) / 100 / pipOf(x.pair) / 100);
-    const due = x.exit <= n.date;
+    const pnl = (live - x.entry) * x.dir * (x.units || 10000) * (yenPerPip(x.pair) / 100 / pipOf(x.pair) / 100);
+    const due = x.exitT - 3600 <= now;
     const stopHit = x.dir === 1 ? live <= x.stop : live >= x.stop;
     return `<div class="pos ${due ? "due" : ""}">
       <div class="t"><span>${slash(x.pair)} ${x.dir === 1 ? "買い" : "売り"} ${x.mini ? "ミニ" : ""}${x.lots}Lot</span>
-        <span class="${pnl >= 0 ? "plus" : "minus"}">${pnl >= 0 ? "+" : ""}${yen(pnl).replace("¥-", "-¥")}</span></div>
-      <div class="note">入った ${jd(x.date)} ${fx(x.pair, x.entry)} ／ 損切り ${fx(x.pair, x.stop)} ／ いま ${fx(x.pair, live)}</div>
-      <div class="note" style="color:${due ? "var(--accent)" : "var(--sub)"}"><b style="color:inherit">${due ? "きょうが手仕舞い日" : "手仕舞い " + jd(x.exit) + " 朝9〜12時"}</b>
+        <span class="${pnl >= 0 ? "plus" : "minus"}">${pnl >= 0 ? "+" : ""}${yen(pnl)}</span></div>
+      <div class="note">入った ${tj(x.t)} ${fx(x.pair, x.entry)} ／ 損切り ${fx(x.pair, x.stop)} ／ いま ${fx(x.pair, live)}</div>
+      <div class="note" style="color:${due ? "var(--accent)" : "var(--sub)"}"><b style="color:inherit">${due ? "手仕舞いの時刻です" : "手仕舞い " + tj(x.exitT) + " ごろ"}</b>
         ${due ? "：ポジション照会 → 左にスワイプ →『クイック決済』（逆指値は自動で取消）" : ""}
         ${stopHit ? "<br>損切りの値に届いている可能性があります。DMMで確認を。" : ""}</div>
       <div style="display:flex; gap:8px;">
         <button class="btn ghost" style="padding:9px; font-size:13px;" data-ics="${k}">カレンダーに入れる</button>
-        <button class="btn red" style="padding:9px; font-size:13px;" data-close="${k}">手仕舞った（消す）</button></div>
-    </div>`;
+        <button class="btn red" style="padding:9px; font-size:13px;" data-close="${k}">手仕舞った（消す）</button></div></div>`;
   }).join("");
   if(!mine) return "";
   return `<div class="card"><h2>持っている取引 <small>記録した分</small></h2>${mine}
-    <div class="note" style="margin-top:6px;">損益はおおよそ（${DATA.updated.slice(11)}ごろの値）。正確な値はDMMアプリで。</div></div>`;
+    <div class="note" style="margin-top:6px;">損益はおおよそ（${tj(DATA.updatedTs, false)}ごろの値）。正確な値はDMMアプリで。</div></div>`;
 }
-
+function eventStrip(){
+  if(!FUND) return "";
+  const today = isoJ(nowS());
+  const ev = (FUND.events || []).filter(e => e.date >= today && e.date <= isoAdd(today, 6));
+  if(!ev.length) return "";
+  const soon = ev.some(e => e.date <= isoAdd(today, 1));
+  return `<details class="card" ${soon ? "open" : ""}><summary>📅 この1週間の重要発表（${ev.length}件）</summary>
+    ${ev.map(e => `<div class="kv"><span>${jd(e.date)} ${e.time}</span><b>${esc(e.name)}</b></div>`).join("")}
+    <div class="note" style="margin-top:6px;">発表の前後は値が飛びやすい。サインの判定には使っていません（検証していないため）。</div></details>`;
+}
 function renderHome(){
-  const list = PAIRS.map(p => ({p, s:statusOf(p)})).sort((a, b) => a.s.rank - b.s.rank || Math.abs(50 - DATA.pairs[b.p].rsi) - Math.abs(50 - DATA.pairs[a.p].rsi));
   const r = DATA.rule;
+  const list = PAIRS.map(p => ({p, s:statusOf(p)})).sort((a, b) => a.s.rank - b.s.rank || Math.abs(50 - DATA.pairs[b.p].rsi) - Math.abs(50 - DATA.pairs[a.p].rsi));
   const rows = list.map(({p, s}) => {
     const pd = DATA.pairs[p];
     return `<div class="prow" data-p="${p}">
-      <div class="pn">${slash(p)}<small>${fx(p, pd.price)}</small></div>
+      <div class="pn">${slash(p)}<small>${fx(p, pd.live ? pd.live.p : pd.price)}</small></div>
       <div class="gauge"><div class="gbar"><div class="zb"></div><div class="zs"></div><div class="dot" style="left:${Math.max(1, Math.min(99, pd.rsi))}%"></div></div>
         <div class="gnum">RSI <b style="color:var(--text)">${pd.rsi}</b>　${nearTrig(p)}</div></div>
       ${s.t ? `<div class="chip ${s.cls}">${s.t}</div>` : ""}</div>`;
   }).join("");
-  const stale = staleNote();
-  app().innerHTML = stale + heroHtml() + positionsHtml() + eventStrip() +
-    `<div class="card"><h2>11ペアの状態 <small>${jd(DATA.latest)} 9時の値</small></h2>${rows}
-     <div class="note" style="margin-top:8px;">RSI（行きすぎ度 0〜100）が<b>${r.buyAt}以下に入った日に買い</b>、<b>${r.sellAt}以上に入った日に売り</b>。緑・赤の帯に入った<b>初日だけ</b>がサインです。タップで詳しく。</div></div>`;
-  bindHome();
-}
-function staleNote(){
-  // 平日なのに 2 日以上前の値しか無い＝自動更新が止まっている
-  const n = nowJ();
-  const lag = (Date.parse(n.date) - Date.parse(DATA.latest)) / 86400e3;
-  const limit = n.dow === 1 ? 3 : (n.dow === 0 ? 2 : 1);
-  if(lag > limit && !(n.dow === 6 && lag <= 1)) return `<div class="warn">⚠ データが${jd(DATA.latest)}のまま更新されていません。自動更新が止まっている可能性があります。</div>`;
-  return "";
-}
-function eventStrip(){
-  if(!FUND) return "";
-  const n = nowJ();
-  const ev = (FUND.events || []).filter(e => e.date >= n.date && e.date <= addDaysIso(n.date, 6));
-  if(!ev.length) return "";
-  const urgent = ev.some(e => e.date <= addDaysIso(n.date, 1));
-  return `<details class="card" ${urgent ? "open" : ""}><summary>📅 この1週間の重要発表（${ev.length}件）</summary>
-    ${ev.map(e => `<div class="kv"><span>${jd(e.date)} ${e.time}</span><b>${esc(e.name)}</b></div>`).join("")}
-    <div class="note" style="margin-top:6px;">発表の前後は値が飛びやすい。サインの判定には使っていません（検証していないため）。</div></details>`;
-}
-function bindHome(){
-  app().querySelectorAll("[data-p]").forEach(el => el.addEventListener("click", () => openPair(el.dataset.p)));
+  app().innerHTML = staleNote() + heroHtml() + positionsHtml() + eventStrip() +
+    `<div class="card"><h2>11ペアの状態 <small>${tj(DATA.latestT)} までの値</small></h2>${rows}
+     <div class="note" style="margin-top:8px;">RSI（行きすぎ度 0〜100）が<b>${r.buyAt}以下に入ったら買い</b>、<b>${r.sellAt}以上に入ったら売り</b>。越えた最初の時刻だけがサインです（1時間ごとに判定）。右の値は「次の1時間でこの値を越えるとサイン」。</div></div>`;
+  app().querySelectorAll("[data-p]").forEach(el => el.addEventListener("click", () => { sel = el.dataset.p; view = "pair"; render(); window.scrollTo(0, 0); }));
   app().querySelectorAll("[data-close]").forEach(el => el.addEventListener("click", e => {
-    e.stopPropagation();
-    const k = +el.dataset.close;
+    e.stopPropagation(); const k = +el.dataset.close;
     if(confirm(`${slash(positions[k].pair)} の記録を消しますか？（DMMで決済したあとに押す）`)){ positions.splice(k, 1); store.set("fx_pos", positions); render(); }
   }));
   app().querySelectorAll("[data-ics]").forEach(el => el.addEventListener("click", e => { e.stopPropagation(); downloadIcs(positions[+el.dataset.ics]); }));
 }
-function openPair(p){ sel = p; view = "pair"; render(); window.scrollTo(0, 0); }
 
 // ---------- ペア詳細 ----------
 function renderPair(p){
-  const pd = DATA.pairs[p], r = DATA.rule, n = nowJ();
-  const d = decide(p);
-  const dir = pd.sig || (pd.rsi < 50 ? 1 : -1);        // サインが無い時は「もし入るなら」の参考方向
+  const pd = DATA.pairs[p], r = DATA.rule, d = decide(p), S = pd.sig;
+  const dir = S ? S.dir : (pd.rsi < 50 ? 1 : -1);
   const cls = d.kind === "GO" || d.kind === "DONE" ? (d.dir === 1 ? "buy" : "sell") : "";
-  const head = d.kind === "GO" ? `${d.dn}で入ってOK` : d.kind === "DONE" ? `${d.dn}で入りました` : (d.kind === "NO" ? `${d.dn}サインだが見送り` : "様子見（何もしない）");
-  const sub = d.kind === "GO" ? `${r.deadline}時までに入る` + (d.wa.length ? "・△を読んでから" : "")
-            : d.kind === "DONE" ? "あとは損切り（逆指値）を置いて、手仕舞いの日を待つだけ"
+  const head = d.kind === "GO" ? `${d.dn}で入ってOK` : d.kind === "DONE" ? `${d.dn}で入りました` : d.kind === "NO" ? `${d.dn}サインだが見送り` : "様子見（何もしない）";
+  const sub = d.kind === "GO" ? `サインから${r.best}時間以内が目安` + (d.wa.length ? "・△を読んでから" : "")
+            : d.kind === "DONE" ? "あとは損切り（逆指値）を置いて、手仕舞いの時刻を待つだけ"
             : d.kind === "NO" ? "理由：" + d.ng.map(t => t.split("：")[0]).join("・")
-            : `いまの RSI ${pd.rsi}。${r.buyAt}以下か${r.sellAt}以上に入った初日だけがサイン`;
+            : `いまの RSI ${pd.rsi}。${r.buyAt}以下か${r.sellAt}以上に入った時がサイン`;
   const mark = {ok:"✔", ng:"✖", wa:"△"};
-  const chk = d.rows && d.rows.length ? `<div class="chk">${d.rows.map(x => `<div class="${x.s}">${mark[x.s]} ${esc(x.t)}</div>`).join("")}</div>` : "";
+  const chk = d.rows.length ? `<div class="chk">${d.rows.map(x => `<div class="${x.s}">${mark[x.s]} ${esc(x.t)}</div>`).join("")}</div>` : "";
   const al = alertFor(p, pd.price);
   let html = `<button class="back" id="back">‹ 一覧へ</button>
-    <div class="dec ${cls}">
-      <div class="pair"><b>${slash(p)}</b>　${jpName(p)}　今朝9時 <b>${fx(p, pd.price)}</b></div>
-      <div class="head ${cls ? "" : "neu"}">${head}</div>
-      <div class="note">${sub}</div>${chk}
-    </div>`;
+    <div class="dec ${cls}"><div class="pair"><b>${slash(p)}</b>　${jpName(p)}　いま <b>${fx(p, pd.live ? pd.live.p : pd.price)}</b></div>
+      <div class="head ${cls ? "" : "neu"}">${head}</div><div class="note">${sub}</div>${chk}</div>`;
   if(al) html += `<div class="warn">⚠ ${esc(al.note)}</div>`;
-  if(d.kind === "GO") html += orderCard(p, pd.sig, true);
-  html += triggerCard(p);
-  html += activeCard(p);
+  if(d.kind === "GO") html += orderCard(p, S.dir, true);
+  html += triggerCard(p) + activeCard(p);
   if(d.kind !== "GO") html += `<details class="card"><summary>${d.kind === "DONE" ? "注文手順（損切り・手仕舞いの確認）" : d.kind === "NO" ? "参考：それでも入るなら（注文手順）" : "参考：注文のしかた（サインが出た時用）"}</summary>${orderCard(p, dir, false)}</details>`;
-  html += `<div class="card"><h2>チャート <small>毎朝9時の値・90日</small></h2><canvas id="cv" height="260"></canvas>
+  html += `<div class="card"><h2>チャート <small>毎日${tj(pd.t, false)}の値・90日</small></h2><canvas id="cv" height="260"></canvas>
     <div class="note">上：値段　下：RSI（緑の帯＝${r.buyAt}以下、赤の帯＝${r.sellAt}以上）。▲▼＝過去のサイン</div></div>`;
-  html += pairStatsCard(p);
-  html += refCard(p);
-  html += fundCard(p);
+  html += pairStatsCard(p) + refCard(p) + fundCard(p);
   app().innerHTML = html;
   $("#back").onclick = () => { view = "home"; render(); };
-  bindOrder(p);
-  drawChart(p);
+  bindOrder(p); drawChart(p);
 }
-
 function orderCard(p, dir, primary){
-  const pd = DATA.pairs[p], r = DATA.rule;
+  const pd = DATA.pairs[p], r = DATA.rule, S = pd.sig;
   const dn = dir === 1 ? "買い" : "売り", btn = dir === 1 ? "Ask(買)" : "Bid(売)";
-  const slPips = pd.atrPips * r.slAtr;
+  const atrPips = S ? S.atrPips : pd.atrPips, slPips = atrPips * r.slAtr;
   const lp = lotPlan(p, slPips);
-  const exit = pd.exit || nextExit(pd.date);
-  const sym = lp.mini ? MINI[p] : slash(p);
-  const lots = lp.set && lp.lots >= 1 ? lp.lots : 1;
+  const exitT = S ? S.exit : nowS() + 7 * 86400;
+  const sym = lp.mini ? MINI[p] : slash(p), lots = lp.set && lp.lots >= 1 ? lp.lots : 1;
   const K = t => `<span class="kbd">${t}</span>`;
   const id = primary ? "o1" : "o2";
-  return `<div class="${primary ? "card" : ""}" id="${id}" data-dir="${dir}">
+  return `<div class="${primary ? "card" : ""}" id="${id}" data-dir="${dir}" data-atr="${S ? S.atr : pd.atr}">
     ${primary ? `<h2>DMM FX アプリでの注文 <small>画面の順番どおり</small></h2>` : ""}
     <div class="field"><label>約定したレート</label><input class="fill" inputmode="decimal" value="${fx(p, pd.live ? pd.live.p : pd.price)}"></div>
     <div class="note">入ったあと、DMMの「ポジション照会」に出る<b>約定レート</b>に直すと、下の損切りの値が合います。</div>
     <div class="slbox">損切り（逆指値）レート <span class="slv" style="font-size:16px">—</span><br>
-      <span style="font-weight:400">＝約定レートから ${slPips.toFixed(0)}pips（ATR×${r.slAtr}）${dir === 1 ? "下" : "上"}</span></div>
+      <span style="font-weight:400">＝約定レートから ${slPips.toFixed(0)}pips（1日の値幅×${r.slAtr}）${dir === 1 ? "下" : "上"}</span></div>
     ${lp.set ? (lp.lots >= 1 ? `<div class="note">数量：<b>${lp.mini ? sym + "（ミニ）で " : ""}${lp.lots} Lot</b>（${lp.units.toLocaleString()}通貨）→ 損切りに届いた時の損 <b class="minus">約${yen(lp.loss)}</b>（資金の${(lp.loss / balance * 100).toFixed(1)}%）</div>`
       : `<div class="warn" style="margin:8px 0 0">資金${yen(balance)}・リスク${riskPct}%では、最小の1Lotでも損切り時の損（約${yen(lp.perLot / (MINI[p] ? 10 : 1))}）が上限${yen(lp.cap)}を超えます。資金を増やすかリスク%を上げない限り、見送りが安全です。</div>`)
       : `<div class="note">1Lot（1万通貨）で損切りに届いた時の損は <b class="minus">約${yen(lp.perLot)}</b>。設定タブで資金を入れると、あなたに合った Lot 数を出します。</div>`}
@@ -492,74 +433,69 @@ function orderCard(p, dir, primary){
       <div class="st">④ ${K("ポジション照会")} → いま入ったポジションをタップ</div>
       <div class="st">⑤ 注文タイプ ${K("指値・逆指値")}／注文数量 <span class="val">${lots} Lot</span>／執行条件 ${K("逆指値")}</div>
       <div class="st">⑥ 注文レートに <span class="val slv">—</span>／有効期限 ${K("無期限")} → ${K("確認画面")} → ${K("注文")}</div>
-      <div class="st">利確（指値）は<b>置きません</b>。検証では5日で手仕舞う方が良かったため。</div>
-      <h4>STEP3　${jd(exit)} の朝9〜12時に手仕舞う</h4>
+      <div class="st">利確（指値）は<b>置きません</b>。検証では1週間で手仕舞う方が良かったため。</div>
+      <h4>STEP3　${tj(exitT)} ごろに手仕舞う（1週間後の同じ時刻）</h4>
       <div class="st">⑦ ${K("ポジション照会")} → ポジションを<b>左にスワイプ</b> → ${K("クイック決済")} → ${K("クイック決済")}</div>
       <div class="st">付けておいた逆指値は自動で取り消されます。その前に損切りに届いていたら、もう何もしなくてOK。</div>
     </div>
     ${primary ? `<button class="btn rec">入った！この内容で記録する</button>
-      <div class="note" style="margin-top:6px;">記録すると、きょうの画面に手仕舞い日と損益の目安が出ます（この端末の中だけに保存）。</div>` : ""}
+      <div class="note" style="margin-top:6px;">記録すると、この画面に手仕舞いの時刻と損益の目安が出ます（この端末の中だけに保存）。</div>` : ""}
   </div>`;
 }
-function nextExit(iso){ let d = iso, k = 0; while(k < DATA.rule.hold){ d = addDaysIso(d, 1); const w = new Date(d + "T00:00:00Z").getUTCDay(); if(w !== 0 && w !== 6 && !/-12-25$|-01-01$/.test(d)) k++; } return d; }
 function bindOrder(p){
   const pd = DATA.pairs[p], r = DATA.rule;
   ["o1", "o2"].forEach(id => {
     const box = document.getElementById(id); if(!box) return;
-    const dir = +box.dataset.dir, inp = box.querySelector(".fill");
-    const upd = () => {
-      const f = parseFloat(String(inp.value).replace(/[^\d.]/g, ""));
-      const v = f > 0 ? fx(p, f - dir * r.slAtr * pd.atr) : "—";
-      box.querySelectorAll(".slv").forEach(x => x.textContent = v);
-    };
+    const dir = +box.dataset.dir, atr = +box.dataset.atr, inp = box.querySelector(".fill");
+    const upd = () => { const f = parseFloat(String(inp.value).replace(/[^\d.]/g, ""));
+      box.querySelectorAll(".slv").forEach(x => x.textContent = f > 0 ? fx(p, f - dir * r.slAtr * atr) : "—"); };
     inp.addEventListener("input", upd); upd();
     const rec = box.querySelector(".rec");
     if(rec) rec.addEventListener("click", () => {
       const f = parseFloat(String(inp.value).replace(/[^\d.]/g, ""));
       if(!(f > 0)){ alert("約定したレートを入れてください"); return; }
-      const lp = lotPlan(p, pd.atrPips * r.slAtr);
-      const lots = lp.set && lp.lots >= 1 ? lp.lots : 1;
+      const S = pd.sig, lp = lotPlan(p, S.atrPips * r.slAtr), lots = lp.set && lp.lots >= 1 ? lp.lots : 1;
+      const t = Math.round(nowS());
       positions = positions.filter(x => x.pair !== p);
-      positions.push({pair:p, dir, entry:f, stop:+(f - dir * r.slAtr * pd.atr).toFixed(dpOf(p)), lots, mini:!!lp.mini,
-        units: lp.mini ? lots * 1000 : lots * 10000, date:pd.date, exit:pd.exit || nextExit(pd.date)});
+      positions.push({pair:p, dir, entry:f, stop:+(f - dir * r.slAtr * atr).toFixed(dpOf(p)), lots, mini:!!lp.mini,
+        units: lp.mini ? lots * 1000 : lots * 10000, t, exitT: t + 7 * 86400});
       store.set("fx_pos", positions);
       view = "home"; render(); window.scrollTo(0, 0);
     });
   });
 }
 function triggerCard(p){
-  const pd = DATA.pairs[p], r = DATA.rule;
-  const b = pd.trig.buy, s = pd.trig.sell;
+  const pd = DATA.pairs[p], r = DATA.rule, b = pd.trig.buy, s = pd.trig.sell;
   const pct = v => ((v / pd.price - 1) * 100).toFixed(1);
-  return `<div class="card"><h2>次の朝9時のサイン価格 <small>${jd(addWeekday(pd.date))} 9時</small></h2>
-    ${b ? `<div class="kv"><span>この値<b>以下</b>なら 買いサイン</span><b class="plus">${fx(p, b)}（${pct(b)}%）</b></div>` : `<div class="kv"><span>買いサイン</span><b>いま RSI が${r.buyAt}以下のため、明日は出ない</b></div>`}
-    ${s ? `<div class="kv"><span>この値<b>以上</b>なら 売りサイン</span><b class="minus">${fx(p, s)}（+${pct(s)}%）</b></div>` : `<div class="kv"><span>売りサイン</span><b>いま RSI が${r.sellAt}以上のため、明日は出ない</b></div>`}
-    <div class="note" style="margin-top:6px;">DMMアプリの<b>レート通知</b>にこの値を入れておくと、サインが近づいた時に気づけます（判定はあくまで朝9時の値）。</div></div>`;
+  return `<div class="card"><h2>サインが出る値 <small>次の1時間</small></h2>
+    ${b ? `<div class="kv"><span>この値<b>以下</b>なら 買いサイン</span><b class="plus">${fx(p, b)}（${pct(b)}%）</b></div>` : `<div class="kv"><span>買いサイン</span><b>RSI が${r.buyAt}以下にいる間は出ない</b></div>`}
+    ${s ? `<div class="kv"><span>この値<b>以上</b>なら 売りサイン</span><b class="minus">${fx(p, s)}（+${pct(s)}%）</b></div>` : `<div class="kv"><span>売りサイン</span><b>RSI が${r.sellAt}以上にいる間は出ない</b></div>`}
+    <div class="note" style="margin-top:6px;">1時間ごとに少しずつ変わります。DMMアプリの<b>レート通知</b>にこの値を入れておくと、サインが近づいた時に気づけます。</div></div>`;
 }
-function addWeekday(iso){ let d = addDaysIso(iso, 1); while([0, 6].includes(new Date(d + "T00:00:00Z").getUTCDay())) d = addDaysIso(d, 1); return d; }
 function activeCard(p){
-  const pd = DATA.pairs[p], r = DATA.rule, n = nowJ();
-  const act = (pd.active || []).filter(a => a.bars > 0 || a.date !== n.date);
+  const pd = DATA.pairs[p], now = nowS();
+  const act = (pd.active || []).filter(a => !(pd.sig && a.t === pd.sig.t && now - a.t < DATA.rule.limit * 3600));
   if(!act.length) return "";
-  return `<div class="card"><h2>このペアで最近出たサイン <small>手仕舞い前</small></h2>
-    ${act.map(a => `<div class="kv"><span>${jd(a.date)} ${a.dir === 1 ? "買い" : "売り"} ${fx(p, a.entry)}</span>
-      <b>${a.stopped ? '<span class="minus">損切りに届いた</span>' : (a.exit <= n.date ? "きょう手仕舞い" : jd(a.exit) + " 手仕舞い")}</b></div>`).join("")}
-    <div class="note" style="margin-top:6px;">その日に入った場合の予定です（損切り ${act.map(a => fx(p, a.stop)).join("・")}）。</div></div>`;
+  return `<div class="card"><h2>このペアで最近出たサイン</h2>
+    ${act.map(a => `<div class="kv"><span>${tj(a.t)} ${a.dir === 1 ? "買い" : "売り"} ${fx(p, a.entry)}</span>
+      <b>${a.stopped ? '<span class="minus">損切りに届いた</span>' : a.done ? "手仕舞い済み" : tj(a.exit) + " ごろ手仕舞い"}</b></div>`).join("")}
+    <div class="note" style="margin-top:6px;">その時刻に入った場合の予定です（損切り ${act.map(a => fx(p, a.stop)).join("・")}）。</div></div>`;
 }
 function pairStatsCard(p){
-  const pd = DATA.pairs[p], st = pd.stats, all = DATA.stats.all;
-  const last = (pd.last || []).map(t => `<tr><td>${t.d.slice(2).replace(/-/g, "/")}</td><td>${t.dir === 1 ? "買い" : "売り"}</td>
-    <td>${t.how === "sl" ? "損切り" : "5日後"}</td><td class="${t.ret >= 0 ? "plus" : "minus"}">${sgn(t.ret.toFixed(2))}%</td></tr>`).join("");
+  const pd = DATA.pairs[p], st = pd.roll, all = DATA.stats.roll;
+  const last = (pd.last || []).map(t => `<tr><td>${tj(t.t)}</td><td>${t.dir === 1 ? "買い" : "売り"}</td>
+    <td>${t.how === "sl" ? "損切り" : "1週間"}</td><td class="${t.ret >= 0 ? "plus" : "minus"}">${sgn(t.ret.toFixed(2))}%</td></tr>`).join("");
   return `<details class="card"><summary>このペアの過去のサイン</summary>
-    ${st ? `<div class="note">${DATA.stats.from}年から ${st.n}回・勝率${st.wr}%・1回平均${sgn(st.exp)}%・PF${st.pf ?? "—"}</div>` : ""}
-    <div class="note">※1ペアだけだと回数が少なく偶然で上下します（過去に負け越したペアが後で勝つ例も多かった）。判断には<b>11ペア合算の成績</b>（${all.n}回・PF${all.pf}）を使います。</div>
-    <table style="margin-top:6px;"><tr><th>入った日</th><th>向き</th><th>終わり方</th><th>損益</th></tr>${last}</table></details>`;
+    ${st ? `<div class="note">${ymJ(all.from)}から ${st.n}回・勝率${st.wr}%・1回平均${sgn(st.exp)}%・PF${st.pf ?? "—"}</div>` : ""}
+    <div class="note">※1ペアだけだと回数が少なく偶然で上下します。判断には<b>11ペア合算の成績</b>（${all.n}回・PF${all.pf}）を使います。</div>
+    ${last ? `<table style="margin-top:6px;"><tr><th>入った時刻</th><th>向き</th><th>終わり方</th><th>損益</th></tr>${last}</table>` : ""}</details>`;
 }
+function ymJ(t){ const d = new Date(t * 1000 + 9 * 3600e3); return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月`; }
 function refCard(p){
   const pd = DATA.pairs[p], f = pd.ref;
   const tf = (x, nm) => x ? `<div class="kv"><span>${nm}の RSI</span><b>${x.rsi}（${x.up ? "短期は上向き" : "短期は下向き"}）</b></div>` : "";
   return `<details class="card"><summary>参考：ほかの指標・短い時間足</summary>
-    <div class="note" style="margin-bottom:4px;">判定には使っていません（どれも足すと成績が良くならなかった）。相場の雰囲気を見る用です。</div>
+    <div class="note" style="margin-bottom:4px;">判定には使っていません（足しても成績が良くならなかった）。相場の雰囲気を見る用です。</div>
     <div class="kv"><span>ボリンジャーバンド内の位置</span><b>${f.bb ?? "—"}%（0＝下端・100＝上端）</b></div>
     <div class="kv"><span>移動平均 5日 と 25日</span><b>${f.ma === 1 ? "5日が上（上昇寄り）" : "5日が下（下降寄り）"}</b></div>
     <div class="kv"><span>MACD</span><b>${f.macd === 1 ? "上向き" : "下向き"}</b></div>
@@ -570,7 +506,7 @@ function refCard(p){
 function fundCard(p){
   if(!FUND) return "";
   const a = p.slice(0,3), b = p.slice(3), c = FUND.currencies || {};
-  const ev = eventsFor(p, nowJ().date, 30);
+  const ev = eventsFor(p, isoJ(nowS()), 30);
   return `<details class="card"><summary>いまの相場の状況（ファンダ）</summary>
     <div class="note" style="color:var(--text)">${esc(FUND.summary)}</div>
     ${[a, b].filter(x => c[x]).map(x => `<div class="note" style="margin-top:6px;">・<b>${JP[x]}</b>：${esc(c[x].note)}</div>`).join("")}
@@ -590,71 +526,72 @@ function drawChart(p){
   const lo = Math.min(...ch.c), hi = Math.max(...ch.c), pad = (hi - lo) * 0.08 || 0.01;
   const y1 = v => T1 + (B1 - T1) * (1 - (v - lo + pad) / (hi - lo + 2 * pad));
   const y2 = v => T2 + (B2 - T2) * (1 - v / 100);
-  g.font = "11px sans-serif"; g.fillStyle = "#9aa7c2"; g.textAlign = "left";
-  // 値段
+  g.font = "11px sans-serif"; g.fillStyle = "#9aa7c2";
   g.strokeStyle = "#2a3550"; g.lineWidth = 1;
   [lo, (lo + hi) / 2, hi].forEach(v => { g.beginPath(); g.moveTo(L, y1(v)); g.lineTo(Wd - R, y1(v)); g.stroke(); g.fillText(fx(p, v), Wd - R + 4, y1(v) + 4); });
   g.strokeStyle = "#5b8cff"; g.lineWidth = 2; g.beginPath();
   ch.c.forEach((v, i) => i ? g.lineTo(x(i), y1(v)) : g.moveTo(x(i), y1(v))); g.stroke();
-  // RSI
   g.fillStyle = "rgba(35,196,131,.18)"; g.fillRect(L, y2(r.buyAt), Wd - L - R, y2(0) - y2(r.buyAt));
   g.fillStyle = "rgba(255,93,108,.18)"; g.fillRect(L, y2(100), Wd - L - R, y2(r.sellAt) - y2(100));
   g.fillStyle = "#9aa7c2"; [r.buyAt, 50, r.sellAt].forEach(v => g.fillText(String(v), Wd - R + 4, y2(v) + 4));
   g.strokeStyle = "#ffcf4a"; g.lineWidth = 2; g.beginPath();
   ch.r.forEach((v, i) => i ? g.lineTo(x(i), y2(v)) : g.moveTo(x(i), y2(v))); g.stroke();
-  // 過去のサイン
-  for(let i = 1; i < N; i++){
-    const a = ch.r[i - 1], b = ch.r[i];
-    const s = (b <= r.buyAt && a > r.buyAt) ? 1 : ((b >= r.sellAt && a < r.sellAt) ? -1 : 0);
-    if(!s) continue;
+  // 過去のサイン（1時間ごとの判定で出た時刻を、いちばん近い日の位置に置く）
+  (ch.ev || []).forEach(e => {
+    let i = ch.t.findIndex(t => t >= e.t); if(i < 0) i = N - 1;
+    const s = e.dir, yy = y1(ch.c[i]) + (s === 1 ? 12 : -12);
     g.fillStyle = s === 1 ? "#23c483" : "#ff5d6c"; g.beginPath();
-    const yy = y1(ch.c[i]) + (s === 1 ? 12 : -12);
     g.moveTo(x(i), yy - 6 * s); g.lineTo(x(i) - 6, yy + 5 * s); g.lineTo(x(i) + 6, yy + 5 * s); g.fill();
-  }
-  g.fillStyle = "#9aa7c2"; g.textAlign = "left"; g.fillText(jd(ch.d[0]), L, Ht - 2);
-  g.textAlign = "right"; g.fillText(jd(ch.d[N - 1]), Wd - R, Ht - 2);
+  });
+  g.fillStyle = "#9aa7c2"; g.textAlign = "left"; g.fillText(tj(ch.t[0]).split(" ")[0], L, Ht - 2);
+  g.textAlign = "right"; g.fillText(tj(ch.t[N - 1]).split(" ")[0], Wd - R, Ht - 2);
 }
 
 // ---------- 成績 ----------
 function renderStats(){
-  const S = DATA.stats, r = DATA.rule, a = S.all;
-  const maxAbs = Math.max(...S.years.map(y => Math.abs(y.sum)), 1);
-  const years = S.years.map(y => {
-    const w = Math.abs(y.sum) / maxAbs * 50;
+  const S = DATA.stats, r = DATA.rule, a = S.roll, Lg = S.long;
+  const months = (DATA.updatedTs - a.from) / (30.4 * 86400);
+  const maxAbs = Math.max(...Lg.years.map(y => Math.abs(y.sum)), 1);
+  const years = Lg.years.map(y => { const w = Math.abs(y.sum) / maxAbs * 50;
     return `<div class="ybar"><span class="y">${y.y}</span><span class="b"><i style="${y.sum >= 0 ? `left:50%;width:${w}%;background:var(--buy)` : `right:50%;width:${w}%;background:var(--sell)`}"></i></span>
-      <span class="v ${y.sum >= 0 ? "plus" : "minus"}">${sgn(y.sum)}%</span></div>`;
-  }).join("");
-  const neg = S.years.filter(y => y.sum < 0).length;
-  const eras = S.eras.map(e => `<tr><td>${e.name}</td><td>${e.n}</td><td>${e.wr}%</td><td>${sgn(e.exp)}%</td><td>${e.pf}</td></tr>`).join("");
-  const rec = DATA.recent.map(t => `<tr><td>${t.d.slice(2).replace(/-/g, "/")}</td><td>${slash(t.p)}</td><td>${t.dir === 1 ? "買い" : "売り"}</td>
+      <span class="v ${y.sum >= 0 ? "plus" : "minus"}">${sgn(y.sum)}%</span></div>`; }).join("");
+  const eras = Lg.eras.map(e => `<tr><td>${e.name}</td><td>${e.n}</td><td>${e.wr}%</td><td>${sgn(e.exp)}%</td><td>${e.pf}</td></tr>`).join("");
+  const rec = DATA.recent.map(t => `<tr><td>${tj(t.t).split(" ")[0]}</td><td>${slash(t.p)}</td><td>${t.dir === 1 ? "買い" : "売り"}</td>
     <td class="${t.ret >= 0 ? "plus" : "minus"}">${sgn(t.ret.toFixed(2))}%</td></tr>`).join("");
   app().innerHTML = `
-    <div class="card"><h2>この規則の成績 <small>${S.from}年〜・11ペア合算・スプレッド込み</small></h2>
-      <div class="kv"><span>回数</span><b>${a.n}回（月に約${(a.n / ((Date.now() / 3.156e10 + 1970) - S.from) / 12).toFixed(1)}回）</b></div>
+    <div class="card"><h2>いまの規則の成績 <small>${ymJ(a.from)}〜・11ペア合算・スプレッド込み</small></h2>
+      <div class="kv"><span>回数</span><b>${a.n}回（月に約${(a.n / months).toFixed(1)}回）</b></div>
       <div class="kv"><span>勝率</span><b>${a.wr}%</b></div>
       <div class="kv"><span>1回の平均損益</span><b class="plus">${sgn(a.exp)}%</b></div>
       <div class="kv"><span>勝った時の平均／負けた時の平均</span><b>${sgn(a.avgWin)}% ／ ${a.avgLoss}%</b></div>
       <div class="kv"><span>PF（総利益÷総損失）</span><b>${a.pf}</b></div>
       <div class="kv"><span>損切りに届いた割合</span><b>${a.sl}%</b></div>
-      <div class="kv"><span>直近1年</span><b>${S.year1 ? `${S.year1.n}回・勝率${S.year1.wr}%・PF${S.year1.pf ?? "—"}` : "—"}</b></div>
-      <div class="note" style="margin-top:8px;">%は入った値に対する損益。資金に対する損益はリスク%で決まります（リスク2%なら、損切り1回で資金の−2%）。</div></div>
-    <div class="card"><h2>時代ごと <small>どの時代でも勝ち越したか</small></h2>
+      <div class="kv"><span>買い／売り</span><b>PF ${a.buy.pf} ／ ${a.sell.pf}</b></div>
+      <div class="note" style="margin-top:8px;">1時間ごとに判定する形の成績です。1時間足は約2年分しか取れないため、ここまでしか確かめられません（長い期間は下）。
+        %は入った値に対する損益。資金に対する損益はリスク%で決まります（リスク2%なら損切り1回で資金の−2%）。</div></div>
+    <div class="card"><h2>入るのが遅れたら <small>同じ期間</small></h2>
+      <table><tr><th>サインから</th>${S.delay.map(x => `<th>${x.h}時間</th>`).join("")}</tr>
+        <tr><td>PF</td>${S.delay.map(x => `<td>${x.pf}</td>`).join("")}</tr></table>
+      <div class="note" style="margin-top:6px;">早いほど良い。${r.best}時間以内が目安、${r.limit}時間を過ぎたら見送ります。</div></div>
+    <div class="card"><h2>長い期間の検証 <small>日足・${Lg.from}年〜</small></h2>
+      <div class="note">1時間足は古い分が無いので、日足で「毎日決まった時刻に判定する」形を22年分測りました。</div>
+      <table style="margin-top:6px;"><tr><th>判定する時刻</th><th>通算PF</th><th>04-10</th><th>11-14</th><th>15-18</th><th>19-26</th></tr>
+        ${S.cuts.map(c => `<tr><td>${esc(c.name)}</td><td>${c.pf}</td>${c.eras.map(v => `<td class="${v >= 1 ? "" : "minus"}">${v}</td>`).join("")}</tr>`).join("")}</table>
+      <div class="note" style="margin-top:6px;">どの時刻でも通算は勝ち越し＝時刻に縛られた規則ではありません（終値だけで計算した近似）。朝9時が一番安定していました。</div>
+      <div class="note" style="margin-top:8px; color:var(--accent)">朝9時の日足で高値・安値まで使った詳しい成績（${Lg.n}回・勝率${Lg.wr}%・PF${Lg.pf}）</div>
       <table><tr><th>期間</th><th>回数</th><th>勝率</th><th>平均</th><th>PF</th></tr>${eras}</table>
-      <div class="note" style="margin-top:6px;">規則は2004〜2018年だけで選び、2019年以降は<b>選ぶのに使っていない</b>期間です。そこでも勝ち越したので、偶然の当てはめではないと判断しました。</div></div>
-    <div class="card"><h2>年ごとの合計 <small>負けた年 ${neg}/${S.years.length}</small></h2>${years}
-      <div class="note" style="margin-top:6px;">1回ごとの%を足したもの。負ける年もあります。1年単位の結果で規則を変えないのが大事です。</div></div>
+      <div style="margin-top:8px;">${years}</div>
+      <div class="note" style="margin-top:6px;">負けた年 ${Lg.years.filter(y => y.sum < 0).length}/${Lg.years.length}。1年単位の結果で規則を変えないのが大事です。</div></div>
     <div class="card"><h2>最近のサインと結果 <small>全ペア</small></h2>
       <table><tr><th>入った日</th><th>ペア</th><th>向き</th><th>損益</th></tr>${rec}</table></div>
     <details class="card"><summary>2026年9月に判定の方法を変えた理由</summary>
       <div class="note" style="color:var(--text)">
       以前の判定（RSI・ボリンジャー・移動平均・MACDの点数）を2004年からの22年分で測り直したところ、<b>勝っていたのは直近5年だけ</b>で、22年通算ではほぼトントン（PF1.03）でした。
-      また、Yahoo の日足の「終値」は実は<b>毎朝9時の値</b>だったのに、夕方の終値として計算していたため、成績が実際より良く見えていました。<br><br>
-      そこで、日足を「毎朝9時締め」に並べ直し、よく知られた売買規則の型を並べて、<b>2004〜2018年だけで選び、2019年以降で確かめる</b>方法で選び直しました。
-      残ったのが今の規則（RSIが${r.buyAt}/${r.sellAt}を越えた初日に入り、損切りATR×${r.slAtr}・${r.hold}日で手仕舞い）です。周りの設定（しきい値20〜30、損切り2〜4、期限3〜7日）もほぼすべて勝ち越しで、1点だけの当たりではありません。<br><br>
-      ・9時に判定→<b>12時までに入れば</b>成績は変わらず、18時以降に入ると悪化（1時間足で確認）<br>
-      ・サイン2日目に入ると負け越し → 初日だけ<br>
+      そこで、よく知られた売買規則の型を並べて<b>2004〜2018年だけで選び、2019年以降で確かめる</b>方法で選び直し、残ったのが今の規則（RSIが${r.buyAt}/${r.sellAt}を越えた時に入り、損切りは1日の値幅×${r.slAtr}、1週間で手仕舞い）です。
+      周りの設定（しきい値20〜30、損切り2〜4、期限3〜7日）もほぼすべて勝ち越しで、1点だけの当たりではありません。<br><br>
+      ・サインの2日目・3日目に入ると負け越し → 越えた最初だけ<br>
       ・ペアごとの過去成績は次の期間を当てられなかった → ペア別の見送りはしない<br>
-      ・APIキー無し版で使っていた ECB のレートは時刻がずれるため使わず、Yahoo の値をサーバーで計算する形に変更
+      ・判定の時刻は固定しない（どの時刻でも成り立ち、1時間ごとに判定する形が直近では一番良かった）
       </div></details>`;
 }
 
@@ -665,50 +602,48 @@ function renderSettings(){
       <div class="field"><label>資金（円）</label><input id="bal" inputmode="numeric" placeholder="例 1000000" value="${balance || ""}"></div>
       <div class="field"><label>1回で失ってよい割合</label><select id="risk">${[0.5, 1, 2, 3, 5].map(v => `<option value="${v}" ${v === riskPct ? "selected" : ""}>資金の ${v}%</option>`).join("")}</select></div>
       <div class="note">損切りに届いた時の損がこの割合に収まる Lot 数を計算します。<b>2%以下</b>が一般的です。<br>
-        この規則の損切りは広め（1日の値幅の3倍）なので、1Lot（1万通貨）で数万円になることがあります。米ドル・ユーロ・ポンド・豪ドルの対円は<b>ミニ（1Lot＝1,000通貨）</b>でも計算します。</div>
+        損切りは広め（1日の値幅の3倍）なので、1Lot（1万通貨）で数万円になることがあります。米ドル・ユーロ・ポンド・豪ドルの対円は<b>ミニ（1Lot＝1,000通貨）</b>でも計算します。</div>
       <div class="note" style="margin-top:6px;">この端末の中だけに保存されます。</div></div>
     <details class="card" open><summary>📖 使い方（3ステップ）</summary><div class="note" style="color:var(--text)">
-      <b>① 平日の朝9時すぎにアプリを開く</b><br>「きょう入るペア」が出たら、タップして注文手順へ。<b>12時まで</b>に入る。<br><br>
+      <b>① 気が向いた時にアプリを開く</b><br>1時間ごとに自動で判定し直しています。「いま入れるペア」が出ていたら、タップして注文手順へ。サインから<b>3時間以内</b>が目安（6時間で締め切り）。<br><br>
       <b>② DMMアプリで入って、損切り（逆指値）を置く</b><br>約定したレートを入れると、損切りの値が出ます。「記録する」を押しておく。<br><br>
-      <b>③ 5営業日後（翌週の同じ曜日）の朝に手仕舞う</b><br>ポジションを左にスワイプ →「クイック決済」。それより前に損切りに届いたら何もしない。<br><br>
-      サインは11ペア合わせて月に2回ほど。<b>何もしない日がほとんど</b>で、それが正解です。</div></details>
+      <b>③ 1週間後の同じ時刻ごろに手仕舞う</b><br>ポジションを左にスワイプ →「クイック決済」。それより前に損切りに届いたら何もしない。<br><br>
+      サインは11ペア合わせて月に3回ほど。<b>何もしない時間がほとんど</b>で、それが正解です。サインが近いペアは「サインが出る値」をDMMのレート通知に入れておくと見逃しません。</div></details>
     <details class="card"><summary>📖 用語</summary><dl>
       <dt>RSI（行きすぎ度）</dt><dd>最近14日の値上がりと値下がりの割合を0〜100にしたもの。25以下＝売られすぎ、75以上＝買われすぎ。この規則はここだけで判定します。</dd>
-      <dt>サインの初日</dt><dd>RSIが25以下（75以上）に<b>入った日</b>。2日目以降に入ると負け越したので、初日だけ。</dd>
-      <dt>ATR</dt><dd>1日にだいたい動く幅の平均。損切りはこの3倍。</dd>
+      <dt>サイン</dt><dd>RSIが25以下（75以上）に<b>入った最初の時刻</b>。入ったあとも下にいる間は新しいサインにはなりません（2日目以降に入ると負け越した）。</dd>
+      <dt>ATR（1日の値幅）</dt><dd>1日にだいたい動く幅の平均。損切りはこの3倍。</dd>
       <dt>損切り（逆指値）</dt><dd>逆に動いたら自動で決済する注文。<b>必ず置く</b>。DMMでは決済の注文タイプ「指値・逆指値」→ 執行条件「逆指値」。</dd>
-      <dt>手仕舞い</dt><dd>ポジションを閉じること。この規則では5営業日後の朝。</dd>
+      <dt>手仕舞い</dt><dd>ポジションを閉じること。この規則では1週間後の同じ時刻ごろ。</dd>
       <dt>クイック決済</dt><dd>DMMのポジション照会で左にスワイプすると出るボタン。その場で決済し、付けていた逆指値は自動で取り消される。</dd>
       <dt>即時注文</dt><dd>いまの値ですぐ売買する注文。新規はこれで入る。</dd>
       <dt>Lot（ロット）</dt><dd>DMMの数量の単位。1Lot＝1万通貨。ペア名に「ミニ」（USM/JPY など）は1Lot＝1,000通貨。</dd>
       <dt>pips（ピップス）</dt><dd>値動きの単位。円のペアは0.01円＝1pip、それ以外は0.0001＝1pip。</dd>
-      <dt>スプレッド</dt><dd>買値と売値の差（取引のコスト）。DMMは朝9時〜翌5時が固定。成績はこれを差し引いてあります。</dd>
+      <dt>スプレッド</dt><dd>買値と売値の差（取引のコスト）。DMMは朝9時〜翌5時が固定で、早朝は広がる。成績はこれを差し引いてあります。</dd>
       <dt>勝率・平均損益・PF</dt><dd>PF＝勝った合計÷負けた合計。1より大きければ続けるほど有利。</dd>
       <dt>ポジション照会・約定レート</dt><dd>いま持っている取引の一覧と、実際に売買できた値段。</dd>
     </dl></details>`;
-  const b = $("#bal"), rk = $("#risk");
-  b.addEventListener("change", () => { balance = parseFloat(b.value.replace(/[^\d.]/g, "")) || 0; store.set("fx_bal", balance); });
-  rk.addEventListener("change", () => { riskPct = parseFloat(rk.value) || 2; store.set("fx_risk", riskPct); });
+  $("#bal").addEventListener("change", e => { balance = parseFloat(e.target.value.replace(/[^\d.]/g, "")) || 0; store.set("fx_bal", balance); });
+  $("#risk").addEventListener("change", e => { riskPct = parseFloat(e.target.value) || 2; store.set("fx_risk", riskPct); });
 }
 
-// ---------- カレンダー（手仕舞い日の通知） ----------
+// ---------- カレンダー（手仕舞いの時刻の通知） ----------
 function downloadIcs(x){
-  const d = x.exit.replace(/-/g, "");
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+  const f = t => new Date(t * 1000).toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
   const title = `FX手仕舞い ${slash(x.pair)} ${x.dir === 1 ? "買い" : "売り"}`;
   const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//fx-signal//JA", "BEGIN:VEVENT",
-    `UID:${x.pair}-${x.date}@fx-signal`, `DTSTAMP:${stamp}`, `DTSTART:${d}T000000Z`, `DTEND:${d}T030000Z`,
-    `SUMMARY:${title}`, "DESCRIPTION:DMM ポジション照会 → 左にスワイプ → クイック決済（9〜12時）",
+    `UID:${x.pair}-${x.t}@fx-signal`, `DTSTAMP:${f(nowS())}`, `DTSTART:${f(x.exitT)}`, `DTEND:${f(x.exitT + 1800)}`,
+    `SUMMARY:${title}`, "DESCRIPTION:DMM ポジション照会 → 左にスワイプ → クイック決済",
     "BEGIN:VALARM", "TRIGGER:PT0M", "ACTION:DISPLAY", `DESCRIPTION:${title}`, "END:VALARM",
     "END:VEVENT", "END:VCALENDAR"].join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([ics], {type:"text/calendar"}));
-  a.download = `fx-${x.pair}-${x.exit}.ics`; document.body.appendChild(a); a.click(); a.remove();
+  a.download = `fx-${x.pair}.ics`; document.body.appendChild(a); a.click(); a.remove();
 }
 
 // ================= 起動 =================
 document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.v; render(); window.scrollTo(0, 0); }));
-$("#refresh").addEventListener("click", () => load(true));
+$("#refresh").addEventListener("click", load);
 if(DATA) render();          // 前回の値をすぐ出してから、最新を取りに行く
 load();
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

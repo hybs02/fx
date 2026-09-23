@@ -1,18 +1,12 @@
 name: update-signals
 
-# 毎朝 9 時（日本時間）の値でサインを計算して data.json を更新する。
-# Yahoo の日足は UTC 0 時（＝日本の朝 9 時）の値で区切られているので、その直後に計算したい。
-# ところが GitHub の定時実行は混むと 1〜2 時間遅れる（us-stocks の実績で毎回約 2 時間）。
-# そこで早朝 6:13 / 7:43（日本時間）に起動し、build.py が 9:01 まで待ってから計算する。
-# 遅れて 9 時を過ぎてから起動した時は待たずにすぐ計算する。9:07 / 9:37 も予備。
-# 日中は 3 時間ごとに「いまの値」「短い時間足」だけ新しくする（サインは朝 9 時の値で固定）。
+# 1時間ごとに最新の値でサインを計算して data.json を作る（判定の時刻は固定しない）。
+# data.json は main ではなく「data」枝に毎回上書き（force push）する。
+# main に毎時コミットするとリポジトリの履歴が膨らみ続けるため。
+# 画面は https://raw.githubusercontent.com/hybs02/fx/data/data.json を読む。
 on:
   schedule:
-    - cron: "13 21 * * 0-4"
-    - cron: "43 22 * * 0-4"
-    - cron: "7 0 * * 1-5"
-    - cron: "37 0 * * 1-5"
-    - cron: "17 3-18/3 * * 1-5"
+    - cron: "23 * * * 0-5"
   workflow_dispatch:
 
 permissions:
@@ -20,7 +14,7 @@ permissions:
 
 concurrency:
   group: update-signals
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -35,15 +29,12 @@ jobs:
       - name: サインを計算して data.json を作る
         run: python build.py
 
-      - name: 結果をコミット
+      - name: data 枝に上書きする
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data.json
-          if git diff --staged --quiet; then
-            echo "変更なし"
-          else
-            git commit -m "シグナル更新 $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
-            git pull --rebase
-            git push
-          fi
+          git checkout -q --orphan data-new
+          git rm -rq --cached .
+          git add -f data.json
+          git commit -qm "データ $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
+          git push -fq origin data-new:data

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """FX シグナルの計算本体（2026-09-23〜）。
 
-build.py（GitHub Actions が毎朝走らせる）と research/ の検証スクリプトが同じここを使う。
+build.py（GitHub Actions が1時間ごとに走らせる）と research/ の検証スクリプトが同じここを使う。
 スマホの画面（index.html）は計算しない。data.json を表示するだけ。
 
 ■ 規則（22 年・11 ペア・スプレッド込みで検証して決めた。README と research/ を参照）
-  毎朝 9 時（UTC 0 時）の値で RSI(14) を計算し、
-    25 以下に「入った初日」→ 買い／75 以上に「入った初日」→ 売り
-  その日の昼 12 時までに入る。損切りは入った値から ATR(14)×3 の逆指値。利確は置かない。
-  5 営業日後の朝（9〜12 時）に手仕舞う。1 ペア 1 ポジション。
+  RSI(14) が 25 以下に「入った最初」→ 買い／75 以上に「入った最初」→ 売り。
+  損切りは入った値から ATR(14)×3 の逆指値。利確は置かない。5 本後（≒1週間後）に手仕舞う。1 ペア 1 ポジション。
+  アプリは判定の時刻を固定しない：1時間ごとに『その時刻で締めた日足』で判定する（下の「時刻に縛られない版」）。
+  下の 22 年の数字は「毎朝 9 時締めの日足」で測ったもの。
   成績（2004〜2026・11 ペア合算）：564 回・勝率 52%・1 回平均 +0.22%・PF1.34、
   2004-10 / 11-14 / 15-18 / 19-21 / 直近 5 年 のどの時代も PF1.16 以上。
 
@@ -24,8 +24,7 @@ RSI_N = 14
 BUY_AT = 25            # RSI がこの値以下に入った初日に買い
 SELL_AT = 75           # RSI がこの値以上に入った初日に売り
 SL_ATR = 3.0           # 損切り＝入った値から ATR×3
-HOLD = 5               # 5 営業日後の朝に手仕舞う
-ENTRY_DEADLINE = 12    # 入るのは 9 時〜この時刻まで（それより遅いと成績が落ちる：research/study_delay.py）
+HOLD = 5               # 5 本後（日足なら 5 営業日後、1時間ごとの版なら約1週間後の同じ時刻）に手仕舞う
 WARMUP = 250
 
 
@@ -196,6 +195,107 @@ def backtest(bars, sig, sl_atr=SL_ATR, hold=HOLD, cost=0.0, start=WARMUP):
                     "ret": ((ex - e) * d - cost) / e * 100})
         nf = j + 1
     return out
+
+
+# ---------------- 時刻に縛られない版（2026-09-23〜 アプリはこちら） ----------------
+# 1時間ごとに「その時刻で締めた日足（24時間ごとの値）」で RSI を計算し、しきい値を越えた最初の時刻をサインにする。
+# 判定の時刻を固定しないので、いつ開いても最新。検証（research/study_cut.py）:
+#   2024年7月〜（1時間足は約2年分しか取れない）で 89回・勝率64%・PF1.95。
+#   入るのが遅れると 2時間後 PF1.89／3時間後 1.71／6時間後 1.66 → 3時間以内が目安、6時間を過ぎたら見送り。
+#   22年（日足・終値だけの近似）でも、判定時刻を朝9時・欧州の昼・NYの昼にしてどれも通算で勝ち越し（1.51/1.23/1.21）。
+ENTRY_BEST_H = 3
+ENTRY_LIMIT_H = 6
+ROLL_WARMUP = 150
+
+
+def phase_series(t, h, l, c):
+    """1時間足（t は足の始まりの時刻）から、UTC の各時刻（0〜23時）で締めた日足を作る。
+    要素 = その時刻の終値、高値・安値は同じ時刻の1つ前の要素からの間。週に約5本ずつ。"""
+    end = {x + 3600: i for i, x in enumerate(t)}
+    out = {}
+    for hh in range(24):
+        ts = sorted(x for x in end if (x // 3600) % 24 == hh)
+        C, H, L, prev = [], [], [], None
+        for x in ts:
+            i = end[x]
+            lo = i if prev is None else end[prev] + 1
+            C.append(c[i]); H.append(max(h[lo:i + 1])); L.append(min(l[lo:i + 1]))
+            prev = x
+        out[hh] = {"t": ts, "C": C, "H": H, "L": L}
+    return out
+
+
+def rolling_state(phases):
+    """各時刻の RSI・ATR・Wilder の平均上昇/下落幅（その時刻締めの日足で）"""
+    st = {}
+    for hh, s in phases.items():
+        r, ag, al = rsi_state(s["C"])
+        for k, x in enumerate(s["t"]):
+            if k >= ROLL_WARMUP:
+                st[x] = {"rsi": r[k], "ag": ag[k], "al": al[k], "atr": atr_at(s["H"], s["L"], s["C"], k),
+                         "c": s["C"][k], "hh": hh, "k": k}
+    return st
+
+
+def rolling_events(st, buy_at=BUY_AT, sell_at=SELL_AT):
+    """しきい値を越えた時刻の一覧。同じ向きの越えが 5 日以内にあった時は同じ山（fresh=False）"""
+    times = sorted(st)
+    ev, last = [], {1: -1e18, -1: -1e18}
+    for a, b in zip(times, times[1:]):
+        if b - a > 3 * 3600:                 # 週末をまたぐ
+            continue
+        ra, rb = st[a]["rsi"], st[b]["rsi"]
+        d = 1 if rb <= buy_at < ra else (-1 if rb >= sell_at > ra else 0)
+        if not d:
+            continue
+        ev.append({"t": b, "dir": d, "from": ra, "to": rb, "fresh": b - last[d] > 5 * 86400})
+        last[d] = b
+    return ev
+
+
+def rolling_backtest(hourly, phases, st, ev, cost=0.0, sl_atr=SL_ATR, hold=HOLD):
+    """サインの時刻に入り、同じ時刻の 5 本後（≒1週間後）に出る。損切りは1時間足の高値・安値で判定。
+    1ペア1ポジション。まだ出口が来ていない取引は含めない。"""
+    t, h, l, c = hourly["t"], hourly["h"], hourly["l"], hourly["c"]
+    end = {x + 3600: i for i, x in enumerate(t)}
+    out, busy = [], 0
+    for e in ev:
+        b = e["t"]
+        if not e["fresh"] or b < busy:
+            continue
+        s = phases[st[b]["hh"]]
+        k0 = st[b]["k"]
+        if k0 + hold >= len(s["t"]):
+            continue
+        tx = s["t"][k0 + hold]
+        d, en = e["dir"], c[end[b]]
+        stop = en - d * sl_atr * st[b]["atr"]
+        ex, how = c[end[tx]], "time"
+        for x in range(b + 3600, tx + 1, 3600):
+            i = end.get(x)
+            if i is None:
+                continue
+            if (l[i] <= stop) if d == 1 else (h[i] >= stop):
+                ex, how, tx = stop, "sl", x
+                break
+        out.append({"t": b, "tx": tx, "dir": d, "entry": en, "exit": ex, "how": how,
+                    "ret": ((ex - en) * d - cost) / en * 100})
+        busy = tx
+    return out
+
+
+def next_hour_triggers(st, tlast, buy_at=BUY_AT, sell_at=SELL_AT, n=RSI_N):
+    """次の1時間の終値がいくら以下（以上）なら RSI がしきい値を越えるか。
+    次の時刻の RSI は『その時刻で締めた日足』の続きなので、その系列の最後の要素（≒24時間前）から逆算する。"""
+    now = st[tlast]["rsi"]
+    prev = [x for x in st if (x // 3600) % 24 == ((tlast + 3600) // 3600) % 24 and x <= tlast]
+    if not prev:
+        return None, None
+    q = st[max(prev)]
+    r, R = buy_at / (100 - buy_at), sell_at / (100 - sell_at)
+    buy = q["c"] - (n - 1) * (q["ag"] / r - q["al"]) if now > buy_at and q["al"] is not None else None
+    sell = q["c"] + (n - 1) * (R * q["al"] - q["ag"]) if now < sell_at and q["ag"] is not None else None
+    return buy, sell
 
 
 def stats(trades):
