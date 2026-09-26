@@ -43,5 +43,5 @@ jobs:
           git checkout -q --orphan data-new
           git rm -rq --cached .
           git add -f data.json
-          git commit -qm "データ $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')"
+          git commit -q --allow-empty-message -m ""
           git push -fq origin data-new:data
