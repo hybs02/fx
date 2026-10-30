@@ -226,8 +226,9 @@ async function load(manual = false){
   const started = Date.now(), before = DATA && DATA.updatedTs;
   try{
     const t = Date.now();
-    const srcs = (manual ? [[API_URL, {headers:{Accept:"application/vnd.github.raw+json"}}]] : [])
-      .concat(DATA_URLS.map(u => [u + "?t=" + t, {}]));
+    // ↻ は API が先。自動の読み込みは raw が先で、古い・読めない時だけ API（未認証は1時間に60回まで）
+    const api = [API_URL, {headers:{Accept:"application/vnd.github.raw+json"}}];
+    const srcs = manual ? [api, ...DATA_URLS.map(u => [u + "?t=" + t, {}])] : [...DATA_URLS.map(u => [u + "?t=" + t, {}]), api];
     let d = null, lastErr = null;
     for(const [u, o] of srcs){
       try{ d = await getJson(u, o); if(usable(d)) break; d = null; }catch(e){ lastErr = e; }
