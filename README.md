@@ -17,6 +17,7 @@ DMM FX で手で取引する前提で、入る時刻・損切りの値・数量�
 | 手元で保存データから作る | `python build.py --cache`（`research/cache/` を使う・動作確認用） |
 | 相場の状況・発表日程・介入警戒の水準を直す | `fundamentals.json` を手で書き換えて main に push |
 | 日銀が政策金利を変えた | `logic.py` の `BOJ_RATE` に1行足す（スワップの計算に使う） |
+| PC から毎時起動する | タスクスケジューラの「usdjpy-signal-update」が毎時5分に `tools\kick_update.vbs` を呼び、`gh workflow run` で計算を始める（下） |
 
 ## 規則
 
@@ -43,7 +44,8 @@ GitHub Actions（毎時 3・23・43 分に頼む／日〜金 UTC）
               └ 画面は raw.githubusercontent.com/hybs02/fx/data/data.json を読んで表示するだけ
 ```
 
-- GitHub の定時実行は混んでいると遅れたり飛ばされたりし、実際に動くのは3〜7時間おきのことが多い。画面は最後の計算から3時間で注意、8時間で警告を出す。
+- GitHub の定時実行は混んでいると遅れたり飛ばされたりし、実際に動くのは3〜7時間おきのことが多い。そのため PC のタスクスケジューラからも毎時5分に起動する（`tools/kick_update.vbs`）。PC が動いている間だけ効き、DMM が閉まっている土曜6時〜月曜6時は起動しない。結果は `tools/kick.log` に1行ずつ残る（gh=0 なら起動できた）。
+- 画面は最後の計算から3時間で注意、8時間で警告を出す。
 - 値が取れなかった時は build.py が止まり、data 枝の前回の結果がそのまま残る。
 - data.json を main に置かない（頻繁にコミットすると main の履歴が膨らみ続ける）。
 
@@ -58,6 +60,7 @@ GitHub Actions（毎時 3・23・43 分に頼む／日〜金 UTC）
 | `fundamentals.json` | 相場の状況・日米の重要発表の日程・介入警戒の水準（手で更新） |
 | `sw.js` / `manifest.webmanifest` / `*.png` | ホーム画面アプリ化・オフライン表示 |
 | `.github/workflows/update.yml` | 自動実行の設定 |
+| `tools/kick_update.vbs` | PC のタスクスケジューラから自動実行を起動する（`gh` にログイン済みであること） |
 | `research/` | 規則を決めた検証（下） |
 
 ## 検証（research/）
