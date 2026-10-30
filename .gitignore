@@ -2,4 +2,3 @@ research/cache/
 __pycache__/
 *.pyc
 data.json
-prev.json

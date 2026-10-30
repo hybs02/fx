@@ -1,6 +1,6 @@
 {
-  "name": "FX シグナル",
-  "short_name": "FXシグナル",
+  "name": "ドル円シグナル",
+  "short_name": "ドル円シグナル",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

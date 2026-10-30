@@ -2,9 +2,11 @@
 """検証用データを cache/ に取る。
   yahoo_d_{PAIR}.json   日足 OHLC（取れるだけ過去から）
   yahoo_h_{PAIR}.json   60分足 OHLC（Yahoo の上限 730 日）
-  ecb_{PAIR}.json       ECB の参照レート（frankfurter・キー無し版アプリが使っていたもの）
+  ecb_{PAIR}.json       ECB の参照レート（frankfurter）
+  yahoo_IRX.json        米 13 週国債の利回り（スワップの計算用）
+ドル円の規則を選び直すだけなら  python research/fetch.py USDJPY
 """
-import io, json, os, time, urllib.request
+import io, json, os, sys, time, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(HERE, "cache")
@@ -14,7 +16,7 @@ PAIRS = ["USDJPY", "EURJPY", "GBPJPY", "AUDJPY", "NZDJPY", "CADJPY", "CHFJPY",
 
 
 def ysym(p):
-    return "JPY=X" if p == "USDJPY" else p + "=X"
+    return {"USDJPY": "JPY=X", "IRX": "%5EIRX"}.get(p, p + "=X")
 
 
 def get(url):
@@ -28,7 +30,9 @@ def get(url):
 
 
 def yahoo(p, interval, rng):
-    d = get(f"https://query1.finance.yahoo.com/v8/finance/chart/{ysym(p)}?range={rng}&interval={interval}")
+    # 日足は range=max だと月足に間引かれるので、2004 年からの期間で頼む
+    span = f"period1=1072915200&period2={int(time.time())}" if rng == "max" else f"range={rng}"
+    d = get(f"https://query1.finance.yahoo.com/v8/finance/chart/{ysym(p)}?{span}&interval={interval}")
     r = d["chart"]["result"][0]
     q = r["indicators"]["quote"][0]
     out = {"t": [], "o": [], "h": [], "l": [], "c": [], "gmtoffset": r["meta"].get("gmtoffset")}
@@ -49,7 +53,10 @@ def ecb(p):
 
 def main():
     os.makedirs(CACHE, exist_ok=True)
-    for p in PAIRS:
+    irx = yahoo("IRX", "1d", "max")
+    io.open(os.path.join(CACHE, "yahoo_IRX.json"), "w").write(json.dumps({"t": irx["t"], "c": irx["c"]}, separators=(",", ":")))
+    print("IRX", len(irx["t"]), flush=True)
+    for p in sys.argv[1:] or PAIRS:
         for name, fn in (("yahoo_d", lambda: yahoo(p, "1d", "max")),
                          ("yahoo_h", lambda: yahoo(p, "60m", "730d")),
                          ("ecb", lambda: ecb(p))):

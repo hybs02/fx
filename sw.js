@@ -2,7 +2,7 @@
 // ・画面（HTML）と data.json などは、毎回ネットを先に見る（更新がすぐ届くように）。
 //   つながらない時だけ、前回保存した物を出す。
 // ・アイコン等の変わらない物は保存した物を先に使う。
-const CACHE = "fx-v2";
+const CACHE = "usdjpy-v1";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "apple-touch-icon.png", "icon-192.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {

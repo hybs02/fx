@@ -47,6 +47,11 @@ def load_hourly(p):
     return json.load(io.open(os.path.join(HERE, "cache", f"yahoo_h_{p}.json")))
 
 
+def load_irx():
+    """米 13 週国債の利回り（Yahoo ^IRX・日足）。スワップの計算に使う"""
+    return json.load(io.open(os.path.join(HERE, "cache", "yahoo_IRX.json")))
+
+
 def load_ecb(p):
     d = json.load(io.open(os.path.join(HERE, "cache", f"ecb_{p}.json")))
     return {dt.date.fromisoformat(a): b for a, b in zip(d["d"], d["c"])}

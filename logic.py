@@ -1,29 +1,26 @@
 # -*- coding: utf-8 -*-
-"""FX シグナルの計算本体（2026-09-23〜）。
+"""ドル円シグナルの計算本体。
 
-build.py（GitHub Actions が1時間ごとに走らせる）と research/ の検証スクリプトが同じここを使う。
+build.py（GitHub Actions が走らせる）と research/ の検証スクリプトが同じここを使う。
 スマホの画面（index.html）は計算しない。data.json を表示するだけ。
 
-■ 規則（22 年・11 ペア・スプレッド込みで検証して決めた。README と research/ を参照）
-  RSI(14) が 25 以下に「入った最初」→ 買い／75 以上に「入った最初」→ 売り。
-  損切りは入った値から ATR(14)×3 の逆指値。利確は置かない。5 本後（≒1週間後）に手仕舞う。1 ペア 1 ポジション。
+■ 規則（ドル円の 22 年・スプレッドとスワップ込みで選んだ。README と research/study_usdjpy.py）
+  RSI(14) が 30 以下に「入った最初」→ 買い／70 以上に「入った最初」→ 売り。
+  損切りは入った値から ATR(14)×4 の逆指値。利確は置かない。1週間後に手仕舞う。持つのは1つだけ。
   アプリは判定の時刻を固定しない：1時間ごとに『その時刻で締めた日足』で判定する（下の「時刻に縛られない版」）。
-  下の 22 年の数字は「毎朝 9 時締めの日足」で測ったもの。
-  成績（2004〜2026・11 ペア合算）：564 回・勝率 52%・1 回平均 +0.22%・PF1.34、
-  2004-10 / 11-14 / 15-18 / 19-21 / 直近 5 年 のどの時代も PF1.16 以上。
+  22 年の数字は「毎朝 9 時締めの日足」で測ったもの：125 回・勝率 54%・1 回平均 +0.34%・PF1.79。
 
-■ 日足の作り方（重要）
+■ 日足の作り方
   Yahoo の為替日足は 2010 年 6 月ごろから「終値＝その日（ロンドン日付）の UTC 0 時の値」で、
-  高値・安値はその日 1 日ぶん。つまり終値はその日の『始まり』の値。これを
-  「東京 9 時締めの日足」に並べ直してから使う（make_bars）。以前（〜2026-09-08）の検証は
-  並べ直していなかったため、入った日の値動きを飛ばし、その日の値幅を先読みしていた。
+  高値・安値はその日 1 日ぶん。つまり終値はその日の『始まり』の値。そのまま使うと入った日の値動きを飛ばし、
+  その日の値幅を先読みするので、「東京 9 時締めの日足」に並べ直してから使う（make_bars）。
 """
 import math
 
 RSI_N = 14
-BUY_AT = 25            # RSI がこの値以下に入った初日に買い
-SELL_AT = 75           # RSI がこの値以上に入った初日に売り
-SL_ATR = 3.0           # 損切り＝入った値から ATR×3
+BUY_AT = 30            # RSI がこの値以下に入った初日に買い
+SELL_AT = 70           # RSI がこの値以上に入った初日に売り
+SL_ATR = 4.0           # 損切り＝入った値から ATR×4
 HOLD = 5               # 5 本後（日足なら 5 営業日後、1時間ごとの版なら約1週間後の同じ時刻）に手仕舞う
 WARMUP = 250
 
@@ -197,16 +194,13 @@ def backtest(bars, sig, sl_atr=SL_ATR, hold=HOLD, cost=0.0, start=WARMUP):
     return out
 
 
-# ---------------- 時刻に縛られない版（2026-09-23〜 アプリはこちら） ----------------
+# ---------------- 時刻に縛られない版（アプリはこちら） ----------------
 # 1時間ごとに「その時刻で締めた日足（24時間ごとの値）」で RSI を計算し、しきい値を越えた最初の時刻をサインにする。
-# 判定の時刻を固定しないので、いつ開いても最新。検証（research/study_cut.py）:
-#   2024年7月〜（1時間足は約2年分しか取れない）で 86回・勝率64%・PF1.92（DMM の取引時間だけ・出口は入った1週間後）。
-#   入るのが遅れると 2時間後 PF1.89／3時間後 1.74／6時間後 1.64／8時間後 1.49／12時間後 1.42／24時間後 1.00
-#   → 3時間以内が目安、8時間を過ぎたら見送り（GitHub の定時実行は数時間遅れることがあるので、6時間より余裕を持たせた）。
-#   22年（日足・終値だけの近似）でも、判定時刻を朝9時・欧州の昼・NYの昼にしてどれも通算で勝ち越し（1.51/1.23/1.21）。
+# 判定の時刻を固定しないので、いつ開いても最新。1時間足は約2年分しか取れないので、長い期間は朝9時締めの日足で確かめる。
+# 入るのはサインから3時間以内が目安、8時間を過ぎたら見送り（ドル円の2年・19回では遅れても大きく崩れなかったが、
+# 回数が少なく確かでないため早めに入る。GitHub の定時実行は数時間遅れることがあるので締め切りに余裕を持たせる）。
 ENTRY_BEST_H = 3
 ENTRY_LIMIT_H = 8
-MAX_SAME_SIDE = 2      # 同じ通貨に同じ向きで持つのは 2 つまで（research/study_portfolio.py）
 ROLL_WARMUP = 150
 
 
@@ -283,7 +277,7 @@ def exit_time(te):
 def rolling_backtest(hourly, phases, st, ev, cost=0.0, sl_atr=SL_ATR, hold=HOLD, delay=0):
     """サインの時刻（から delay 時間後）に入り、入った時刻の1週間後に出る。損切りは1時間足の高値・安値で判定。
     アプリの手順と同じ：DMM が閉まっている時刻のサインは入らない（次に開くのは締め切りの後）、
-    手仕舞いの時刻が閉まっていれば、その前で最後に取引できる時刻に出る。1ペア1ポジション。
+    手仕舞いの時刻が閉まっていれば、その前で最後に取引できる時刻に出る。持つのは1つだけ。
     まだ出口が来ていない取引は含めない。"""
     t, h, l, c = hourly["t"], hourly["h"], hourly["l"], hourly["c"]
     end = {x + 3600: i for i, x in enumerate(t)}
@@ -323,8 +317,7 @@ def next_hour_triggers(st, tlast, buy_at=BUY_AT, sell_at=SELL_AT, n=RSI_N):
     Wilder の平均上昇幅 AG・平均下落幅 AL・終値 C から逆算する（r = しきい値の上昇/下落の比）。
       下がる時 x: AG'=(n-1)AG/n, AL'=((n-1)AL+x)/n  → AG'/AL' ≤ r ⇔ x ≥ (n-1)(AG/r − AL)
       上がる時 u: AG'=((n-1)AG+u)/n, AL'=(n-1)AL/n  → AG'/AL' ≤ r ⇔ u ≤ (n-1)(r·AL − AG)
-    24時間前の時点ですでにしきい値の外にいる（AG/AL ≤ r）時は、少し上がっても外のままなので『上がる時』の式になる。
-    （以前は常に下がる時の式を使っていて、その場合に現在値より上に「この値以下なら買い」が出ていた）"""
+    24時間前の時点ですでにしきい値の外にいる（AG/AL ≤ r）時は、少し上がっても外のままなので『上がる時』の式になる。"""
     now = st[tlast]["rsi"]
     nxt = ((tlast + 3600) // 3600) % 24
     prev = [x for x in st if (x // 3600) % 24 == nxt and x <= tlast]
@@ -336,38 +329,46 @@ def next_hour_triggers(st, tlast, buy_at=BUY_AT, sell_at=SELL_AT, n=RSI_N):
         return None, None
     r, R = buy_at / (100 - buy_at), sell_at / (100 - sell_at)
     buy = sell = None
-    if now > buy_at:                      # 今が 25 より上なら、次の1時間で 25 以下に入れば『入った最初』
+    if now > buy_at:                      # 今がしきい値より上なら、次の1時間でしきい値以下に入れば『入った最初』
         buy = c - (n - 1) * (ag / r - al) if ag >= r * al else c + (n - 1) * (r * al - ag)
     if now < sell_at:
         sell = c + (n - 1) * (R * al - ag) if ag <= R * al else c - (n - 1) * (ag / R - al)
     return buy, sell
 
 
-def exposure(pair, d):
-    """通貨ごとの向き（+1 買い持ち / -1 売り持ち）。例 EURJPY の買い → EUR +1, JPY -1"""
-    return {pair[:3]: d, pair[3:]: -d}
-
-
-def portfolio(trades, cap=MAX_SAME_SIDE):
+def equity(trades):
     """資金に対する増え方と最大の落ち込み（1回のリスク＝資金の1%あたり・単利）。
-    trades: {pair, dir, t0, t1, R}（R＝損益÷損切り幅）。同じ通貨に同じ向きで cap 本を持っている時の新しいサインは見送る。
-    サインは同じ日に固まって出る（22年で半分以上が、同じ通貨・同じ向きの取引を持っている最中に出た）ので、
-    1回あたりのリスクだけでなく、同時に持つ本数を抑えないと資金の落ち込みが大きくなる。"""
-    trades = sorted(trades, key=lambda x: x["t0"])
-    open_, eq, peak, mdd, taken = [], 0.0, 0.0, 0.0, 0
-    def close_until(t):
-        nonlocal eq, peak, mdd
-        for o in sorted([o for o in open_ if o["t1"] <= t], key=lambda o: o["t1"]):
-            open_.remove(o)
-            eq += o["R"]; peak = max(peak, eq); mdd = min(mdd, eq - peak)
-    for x in trades:
-        close_until(x["t0"])
-        ex = exposure(x["pair"], x["dir"])
-        if cap and any(sum(1 for o in open_ if exposure(o["pair"], o["dir"]).get(c) == s) >= cap for c, s in ex.items()):
-            continue
-        open_.append(x); taken += 1
-    close_until(float("inf"))
-    return {"n": taken, "total": round(eq, 1), "mdd": round(mdd, 1)}
+    trades: {t1, R}（R＝損益÷損切り幅）。手仕舞った順に足す"""
+    eq = peak = mdd = 0.0
+    for x in sorted(trades, key=lambda x: x["t1"]):
+        eq += x["R"]; peak = max(peak, eq); mdd = min(mdd, eq - peak)
+    return {"n": len(trades), "total": round(eq, 1), "mdd": round(mdd, 1)}
+
+
+# ---------------- スワップ ----------------
+# 日銀の政策金利（適用の始まり, %）。日銀が金利を変えたらここに足す
+BOJ_RATE = [("2004-01-01", 0.0), ("2006-07-14", 0.25), ("2007-02-21", 0.5), ("2008-10-31", 0.3),
+            ("2008-12-19", 0.1), ("2010-10-05", 0.05), ("2016-02-16", -0.1), ("2024-03-19", 0.05),
+            ("2024-08-01", 0.25), ("2025-01-24", 0.5), ("2025-12-19", 0.75), ("2026-06-16", 1.0),
+            ("2026-09-18", 1.25)]
+SELL_EXTRA = 0.07      # 売りの支払いは受け取りより年 0.07% 多い（DMM 2026-09-23：買い +115 円・売り −118 円／日・1万通貨）
+
+
+def rate_diff(irx, t):
+    """t（UTC 秒）での米短期金利（13週国債 ^IRX）− 日銀の政策金利（年 %）"""
+    import bisect, datetime as _dt
+    k = bisect.bisect_right(irx["t"], t) - 1
+    us = irx["c"][max(k, 0)]
+    d = _dt.datetime.fromtimestamp(t, _dt.timezone.utc).date().isoformat()
+    jp = BOJ_RATE[max(bisect.bisect_right([a for a, _ in BOJ_RATE], d) - 1, 0)][1]
+    return us - jp
+
+
+def swap_pct(irx, t0, t1, d):
+    """t0〜t1 に持った時のスワップ（価格に対する %）。金利差を日割りで。
+    DMM のドル円の値（2026-09-23 で年 2.7% 相当）は金利差とほぼ同じ"""
+    x = rate_diff(irx, t0)
+    return (x if d == 1 else -(x + SELL_EXTRA)) / 365 * (t1 - t0) / 86400
 
 
 def stats(trades):
