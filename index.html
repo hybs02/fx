@@ -109,6 +109,11 @@
   .fig .hl[data-n]::after{content:attr(data-n); position:absolute; top:-9px; right:-7px; background:var(--accent); color:#1a1300; font-size:11px; font-weight:800; border-radius:9px; min-width:17px; height:17px; line-height:17px; text-align:center;}
   .figcap{font-size:11px; color:var(--sub); text-align:center; margin-bottom:8px;}
   .figcap a{color:var(--sub);}
+  .real .rimg{position:relative; width:min(100%, 260px); margin:8px auto 2px;}
+  .real .rimg.sm{width:min(100%, 220px);}
+  .real .rimg img{display:block; width:100%; border-radius:12px; border:1px solid var(--line);}
+  .real .rimg i{position:absolute; outline:2px solid var(--accent); border-radius:6px;}
+  .real .rimg i[data-n]::after{content:attr(data-n); position:absolute; top:-9px; right:-7px; background:var(--accent); color:#1a1300; font-size:11px; font-weight:800; font-style:normal; border-radius:9px; min-width:17px; height:17px; line-height:17px; text-align:center;}
   .shot{display:block; width:min(100%, 280px); margin:8px auto 4px; border:1px solid var(--line); border-radius:12px;}
   .slbox{margin:6px 0; padding:8px 10px; border-radius:10px; background:var(--sellBg); color:#ffb3ba; font-size:12.5px; font-weight:600;}
   .field{display:flex; align-items:center; gap:8px; margin:8px 0;}
@@ -414,7 +419,7 @@ function renderHome(){
     if(confirm("この取引の記録を消しますか？（DMMで決済したあとに押す）")){ positions.splice(k, 1); store.set("uj_pos", positions); render(); }
   }));
   app().querySelectorAll("[data-ics]").forEach(el => el.addEventListener("click", () => downloadIcs(positions[+el.dataset.ics])));
-  bindOrder(); drawChart();
+  bindOrder(); drawChart(); fillDmm();
 }
 function positionsHtml(){
   const now = nowS(), live = livePrice(), sw = DATA.swap;
@@ -493,24 +498,24 @@ function orderCard(dir, primary){
       : `<div class="warn" style="margin:8px 0 0">資金${yen(balance)}・リスク${riskPct}%では、最小のミニ1Lotでも損切り時の損（約${yen(lp.perLot / 10)}）が上限${yen(lp.cap)}を超えます。資金を増やすかリスク%を上げない限り、見送りが安全です。</div>`)
       : `<div class="note">1Lot（1万通貨）で損切りに届いた時の損は <b class="minus">約${yen(lp.perLot)}</b>（ミニ ${MINI} なら1Lot＝1,000通貨で 約${yen(lp.perLot / 10)}）。多すぎる時は入らない。<b>設定タブで資金を入れる</b>と、あなたに合った Lot 数を出します。</div>`}
     <div class="steps">
-      <div class="note" style="margin-bottom:6px;">図は DMM FX アプリの画面を、公式マニュアルをもとに簡略化したものです。<b>黄色の枠を番号の順に</b>押します。</div>
+      <div class="note" style="margin-bottom:6px;">${dmmTok ? "画像は DMM FX アプリの実際の画面です（公式マニュアルの見本なので、値は見本のまま）。" : "図は DMM FX アプリの画面を、公式マニュアルをもとに簡略化したものです。"}<b>黄色の枠を番号の順に</b>押します。</div>
       <h3>STEP1　いま「${dn}」で入る（新規・即時注文）</h3>
       <div class="st">① 下のメニューの ${K("トレード")} を開き、通貨ペアが <b>${sym}</b> なのを確かめて ${K(btn)} を押す</div>
-      ${figTrade(dir, sym)}${figCap("トレード画面", 19)}
+      ${sch(figTrade(dir, sym) + figCap("トレード画面", 19))}${real("1-trade", dir, "トレード画面")}
       <div class="st">② ${K("即時")} ③ 売買 <span class="val">${dir === 1 ? "買" : "売"}</span> ④ 注文数量 <span class="val">${lots} Lot</span> ⑤ ${K("損切：OFF")} のまま ⑥ ${K("確認画面")} → 確認の画面で ${K("注文")}</div>
-      ${figNew(dir, sym, lots)}${figCap("新規 即時注文", 20)}
+      ${sch(figNew(dir, sym, lots) + figCap("新規 即時注文", 20))}${real("2-new", dir, "新規 即時注文（見本は確認画面を出さない設定なので、⑥が［注文］）")}${real("2-new-confirm", dir, "確認の画面 →［注文］", true)}
       <div class="st">⑤を ON にしないのは、DMM の損切幅は 99.9pips までで、この規則の損切り（約${slPips.toFixed(0)}pips）を入れられないため。STEP2 で置きます。確認画面を出さない設定だと⑥が ${K("注文")} になり、押すとすぐ発注されます。</div>
       <h4>STEP2　損切りを予約する（決済・逆指値）</h4>
       <div class="st">⑦ ${K("ポジション照会")} ⑧ いま入ったポジションを押す</div>
-      ${figPos(dir, sym, lots, false)}${figCap("トレード画面のポジション照会", 35)}
+      ${sch(figPos(dir, sym, lots, false) + figCap("トレード画面のポジション照会", 35))}${real("3-positions", dir, "ポジション照会")}
       <div class="st">⑨ ${K("指値・逆指値")} ⑩ 執行条件 ${K("逆指値")} ⑪ 注文レートに <span class="val slv">—</span> ⑫ 有効期限 ${K("無期限")} ⑬ ${K("確認画面")} → 確認の画面で ${K("注文")}</div>
-      ${figStop(dir, sym, lots)}${figCap("決済 指値・逆指値注文", 36)}
+      ${sch(figStop(dir, sym, lots) + figCap("決済 指値・逆指値注文", 36))}${real("4-stop", dir, "決済 指値・逆指値注文")}${real("4-stop-confirm", dir, "確認の画面 →［注文］", true)}
       <div class="st">利確（指値）は<b>置きません</b>。検証では1週間で手仕舞う方が良かったため。損切りは介入などの急変に備える保険で、22年の検証では1回も届いていません。</div>
       <h4>STEP3　入った1週間後に手仕舞う（いま入れば ${tj(exitT)} ごろ）</h4>
       ${eh >= 5 && eh < 9 ? (dmmOpen(exNine) ? `<div class="st" style="color:var(--accent)">早朝5〜9時はスプレッドが広がるので、9時を待ってから手仕舞う。</div>`
         : `<div class="st" style="color:var(--accent)">土曜はDMMが5:50に閉まるので、それまでに手仕舞う（週末に持ち越さない）。</div>`) : ""}
       <div class="st">⑭ ${K("ポジション照会")} でポジションを<b>左にスワイプ</b> ⑮ ${K("クイック決済")} → 確認の画面でもう一度 ${K("クイック決済")}</div>
-      ${figPos(dir, sym, lots, true)}${figCap("クイック決済", 40)}
+      ${sch(figPos(dir, sym, lots, true) + figCap("クイック決済", 40))}${real("5-quick", dir, "左にスワイプしたところ")}
       <div class="st">付けておいた逆指値は自動で取り消されます。その前に損切りに届いていたら、もう何もしなくてOK。</div>
     </div>
     ${primary ? `<button class="btn rec">入った！この内容で記録する</button>
@@ -559,6 +564,57 @@ function figStop(dir, sym, lots){
     <div class="rw"><i>注文レート</i><div ${mark("box", "⑪")}><span>−</span><span class="slv">—</span><span>＋</span></div></div>
     <div class="rw"><i>有効期限</i><div ${mark("seg", "⑫")}><span>今日中</span><span>今週中</span><span class="on">無期限</span><span>期間指定</span></div></div>
     <div class="bt"><span>キャンセル</span><span ${mark("", "⑬")}>確認画面</span></div></div>`;
+}
+// ---------- DMM FX アプリの実際の画面（自分の端末だけ） ----------
+// 画像は非公開リポジトリ hybs02/fx-dmm にある（DMM の公式マニュアルから切り出したもの。公開しない）。
+// 設定タブで読み取り専用の鍵（トークン）を入れた端末でだけ GitHub API から読み、上の図の代わりに出す。読めなければ図のまま
+const DMM_API = "https://api.github.com/repos/hybs02/fx-dmm/contents/dmm/";
+const DMM_CACHE = "dmm-img-v1";
+const DMM_NAMES = ["1-trade", "2-new", "2-new-confirm", "3-positions", "4-stop", "4-stop-confirm", "5-quick"];
+let dmmTok = store.get("uj_dmm_tok", "") || "";
+const dmmUrls = {};          // 画像名 → object URL（描き直しても読み直さない）
+// 押す所の枠（画像に対する％：番号・左・上・幅・高さ）。1-trade だけ買い／売りで違う
+const DMM_MARKS = {
+  "1-trade": d => [d === 1 ? ["①", 51.9, 24.2, 46.3, 51] : ["①", 1.3, 24.2, 45.8, 51]],
+  "2-new": () => [["②", 0, 38.4, 19.6, 4.2], ["③", 31.3, 44, 32, 4], ["④", 31.3, 49.2, 66, 4.2], ["⑤", 50.1, 61.1, 46.2, 2.8], ["⑥", 24.5, 66.4, 50.1, 6]],
+  "2-new-confirm": () => [["", 50.7, 59.8, 47.6, 10.6]],
+  "3-positions": () => [["⑦", 24.5, 37.7, 25.5, 4.7], ["⑧", 0.5, 54.8, 99, 6.4]],
+  "4-stop": () => [["⑨", 33.3, 38.8, 32.6, 4], ["⑩", 35.1, 60, 42.7, 3.9], ["⑪", 35.1, 65, 62, 4.7], ["⑫", 35.1, 70.4, 62, 4.1], ["⑬", 49.9, 76.6, 47.1, 4.6]],
+  "4-stop-confirm": () => [["", 51, 80.8, 47.2, 12.5]],
+  "5-quick": () => [["⑭", 0, 55.2, 79, 6.6], ["⑮", 79.8, 55.2, 19.7, 6.6]],
+};
+const sch = html => `<div class="sch">${html}</div>`;
+function real(name, dir, cap, small){
+  if(!dmmTok) return "";
+  const marks = DMM_MARKS[name](dir).map(([n, x, y, w, h]) => `<i ${n ? `data-n="${n}"` : ""} style="left:${x}%;top:${y}%;width:${w}%;height:${h}%"></i>`).join("");
+  return `<div class="real" data-img="${name}" hidden><div class="rimg${small ? " sm" : ""}"><img alt="${cap}">${marks}</div>
+    <div class="figcap">DMM FX アプリ：${cap}</div></div>`;
+}
+async function dmmImg(name){
+  if(dmmUrls[name]) return dmmUrls[name];
+  const key = "https://dmm-img.local/" + name;      // Cache API の鍵（URL の形でないと置けない）
+  let blob = null;
+  try{ const hit = await (await caches.open(DMM_CACHE)).match(key); if(hit) blob = await hit.blob(); }catch(e){}
+  if(!blob){
+    const r = await fetch(DMM_API + name + ".webp", {cache:"no-store", headers:{Authorization:"Bearer " + dmmTok, Accept:"application/vnd.github.raw+json"}});
+    if(!r.ok) throw new Error(r.status === 401 ? "鍵が違うか、期限が切れています" : r.status === 404 || r.status === 403 ? "この鍵では hybs02/fx-dmm を読めません（作る時の設定を確かめてください）" : "HTTP " + r.status);
+    blob = new Blob([await r.arrayBuffer()], {type:"image/webp"});
+    try{ await (await caches.open(DMM_CACHE)).put(key, new Response(blob, {headers:{"Content-Type":"image/webp"}})); }catch(e){}
+  }
+  return dmmUrls[name] = URL.createObjectURL(blob);
+}
+// 描いた注文手順の中の実際の画面を読み、読めた所だけ図と入れ替える
+function fillDmm(){
+  if(!dmmTok) return;
+  app().querySelectorAll(".real[data-img]").forEach(el => dmmImg(el.dataset.img).then(u => {
+    el.querySelector("img").src = u; el.hidden = false;
+    const s = el.previousElementSibling; if(s && s.classList.contains("sch")) s.hidden = true;
+  }).catch(() => {}));
+}
+async function dmmClear(){
+  dmmTok = ""; store.set("uj_dmm_tok", "");
+  Object.keys(dmmUrls).forEach(k => { URL.revokeObjectURL(dmmUrls[k]); delete dmmUrls[k]; });
+  try{ await caches.delete(DMM_CACHE); }catch(e){}
 }
 function bindOrder(){
   const r = DATA.rule;
@@ -740,6 +796,20 @@ function renderSettings(){
         損切りは広め（1日の値幅の${r.slAtr}倍）なので、1Lot（1万通貨）で数万円になります。足りない時は<b>ミニ ${MINI}（1Lot＝1,000通貨）</b>で計算します（ミニはスプレッドが固定されず広め）。</div>
       <div class="note" id="moneyNote" style="margin-top:6px;"></div>
       <div class="note" style="margin-top:6px;">この端末の中だけに保存されます。</div></div>
+    <details class="card"><summary>DMM の実際の画面を出す（自分の端末だけ）</summary>
+      <div class="note">注文手順の図を、DMM FX アプリの実際の画面（公式マニュアルから切り出した画像）に替えます。
+        画像は非公開の場所（GitHub の hybs02/fx-dmm）にあり、下に鍵を入れた端末でだけ読めます。</div>
+      <div class="note" id="dmmState" style="margin-top:6px; color:${dmmTok ? "var(--buy)" : "var(--sub)"}">${dmmTok ? "この端末には鍵が入っています（注文手順は実際の画面）" : "まだ鍵が入っていません（注文手順は簡略化した図）"}</div>
+      <div class="field"><label>鍵（トークン）</label><input id="tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></div>
+      <div style="display:flex; gap:8px;"><button class="btn" id="tokSave" style="margin-top:4px;">保存して確かめる</button>
+        <button class="btn ghost" id="tokDel" style="margin-top:4px;">この端末から消す</button></div>
+      <div class="note" style="margin-top:8px;">鍵の作り方（PC で一度だけ）：GitHub にログイン → 右上の自分のアイコン → Settings → Developer settings →
+        Personal access tokens → Fine-grained tokens → Generate new token<br>
+        ・Repository access：Only select repositories で <b>hybs02/fx-dmm</b> だけ<br>
+        ・Permissions：Repository permissions の <b>Contents を Read-only</b>（ほかは触らない）<br>
+        ・Expiration：1年など。切れたら作り直して貼り直す<br>
+        できた鍵（github_pat_ で始まる）をスマホに送り、ここに貼って「保存して確かめる」。
+        鍵はこの端末の中だけに保存し、GitHub 以外には送りません。この鍵でできるのは、この画像を読むことだけです。</div></details>
     <details class="card" open><summary>📖 使い方（3ステップ）</summary><div class="note" style="color:var(--text)">
       <b>① 気が向いた時にアプリを開く</b><br>自動で判定し直しています。ふだんは「様子見」で、何もしません。サインは年に5回ほどです。
       <img class="shot" src="guide/wait.webp" alt="様子見の画面" loading="lazy"><br>
@@ -769,6 +839,21 @@ function renderSettings(){
       <dt>勝率・平均損益・PF</dt><dd>PF＝勝った合計÷負けた合計。1より大きければ続けるほど有利。</dd>
       <dt>ポジション照会・約定レート</dt><dd>いま持っている取引の一覧と、実際に売買できた値段。</dd>
     </dl></details>`;
+  $("#tokSave").addEventListener("click", async () => {
+    const v = $("#tok").value.trim(), st = $("#dmmState");
+    if(!v){ st.textContent = "鍵を貼ってから押してください"; st.style.color = "var(--sell)"; return; }
+    await dmmClear(); dmmTok = v;
+    st.textContent = "確かめています…"; st.style.color = "var(--sub)";
+    try{
+      for(const n of DMM_NAMES) await dmmImg(n);                 // 7枚とも読んで、この端末に置いておく（電波が無くても出る）
+      store.set("uj_dmm_tok", v); $("#tok").value = "";
+      st.textContent = `保存しました（画像${DMM_NAMES.length}枚を読めた）。「いま」タブの注文手順が実際の画面になります`; st.style.color = "var(--buy)";
+    }catch(e){ await dmmClear(); st.textContent = "読めませんでした：" + e.message; st.style.color = "var(--sell)"; }
+  });
+  $("#tokDel").addEventListener("click", async () => {
+    await dmmClear(); const st = $("#dmmState");
+    st.textContent = "この端末から鍵と画像を消しました"; st.style.color = "var(--sub)";
+  });
   $("#bal").addEventListener("change", e => { balance = parseFloat(e.target.value.replace(/[^\d.]/g, "")) || 0; store.set("fx_bal", balance); });
   const mn = () => { const m = moneyLines(); $("#moneyNote").innerHTML = m ? `このリスクだと、過去の検証では資金が <b>${m.long}</b>（22年）でした。` : ""; };
   $("#risk").addEventListener("change", e => { riskPct = parseFloat(e.target.value) || 2; store.set("fx_risk", riskPct); mn(); });
