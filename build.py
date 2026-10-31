@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """GitHub Actions が定時に走らせて data.json を作る（スマホはそれを表示するだけ）。
 
-  1. ドル円の 1時間足（2年）と日足（2004年〜）、米 13 週国債の利回り（スワップの計算用）を Yahoo から取る（キー不要）
+  1. ドル円の 1時間足（2年）と日足（2004年〜）、ドル指数 DXY の 1時間足と日足、
+     米 13 週国債の利回り（スワップの計算用）を Yahoo から取る（キー不要）
   2. 1時間ごとに『その時刻で締めた日足』で RSI を計算し、しきい値を越えた最初の時刻をサインにする
-     （判定の時刻を固定しない。いつ開いても最新）
+     （判定の時刻を固定しない。いつ開いても最新）。行きすぎが円だけの動きでなく、ドル全体の動きなら入らない
   3. 損切り幅・次の1時間のサイン価格・スワップの目安・検証成績を data.json に書く
 
 使い方:  python build.py            （ネットから取る）
@@ -52,16 +53,20 @@ def retry(fn, tries=3):
 
 
 def load(use_cache):
-    """1時間足・日足・米金利。どれか取れなければ例外（main が前回の結果を残す）"""
+    """1時間足・日足・米金利・ドル指数（1時間足と日足）。どれか取れなければ例外（main が前回の結果を残す）"""
     if use_cache:
         cd = os.path.join(HERE, "research", "cache")
         rd = lambda n: json.load(io.open(os.path.join(cd, n)))
-        return rd("yahoo_h_USDJPY.json"), rd("yahoo_d_USDJPY.json"), rd("yahoo_IRX.json")
+        return (rd("yahoo_h_USDJPY.json"), rd("yahoo_d_USDJPY.json"), rd("yahoo_IRX.json"),
+                {"h": rd("yahoo_h_DXY.json"), "d": rd("yahoo_DXY.json")})
     now = int(time.time())
+    span = f"period1=1072915200&period2={now}"
+    tc = lambda x: {"t": x["t"], "c": x["c"]}
     h = retry(lambda: yahoo("JPY=X", "60m", "range=730d"))
-    d = retry(lambda: yahoo("JPY=X", "1d", f"period1=1072915200&period2={now}"))
-    irx = retry(lambda: yahoo("%5EIRX", "1d", f"period1=1072915200&period2={now}"))
-    return h, d, {"t": irx["t"], "c": irx["c"]}
+    d = retry(lambda: yahoo("JPY=X", "1d", span))
+    irx = retry(lambda: yahoo("%5EIRX", "1d", span))
+    dxy = {"h": tc(retry(lambda: yahoo("DX-Y.NYB", "60m", "range=730d"))), "d": tc(retry(lambda: yahoo("DX-Y.NYB", "1d", span)))}
+    return h, d, tc(irx), dxy
 
 
 def london_date(t):
@@ -97,7 +102,7 @@ def rp(x):
     return None if x is None else round(x, 3)
 
 
-def compute(hr, d, irx, now):
+def compute(hr, d, irx, dxy, now):
     nowts = now.timestamp()
     # 終わった1時間足だけで判定する（進行中の足は「いまの値」としてだけ使う）
     keep = [i for i, t in enumerate(hr["t"]) if t + 3600 <= nowts]
@@ -107,9 +112,22 @@ def compute(hr, d, irx, now):
     ph = logic.phase_series(h["t"], h["h"], h["l"], h["c"])
     st = logic.rolling_state(ph)
     ev = logic.rolling_events(st)
+    # 円だけの動き（YEN_N 日前と比べたドル円の％ − ドル指数の％）。ドル全体の動きで行きすぎたサインは入らない
+    dxh = dxy["h"]
+
+    def yen_at(t):
+        s, k = ph[st[t]["hh"]], st[t]["k"]
+        n = logic.YEN_N
+        uj, dx, dx0 = s["C"][k], logic.asof(dxh, t), logic.asof(dxh, s["t"][k - n])
+        return {"move": logic.yen_move(uj, s["C"][k - n], dx, dx0), "uj": (uj / s["C"][k - n] - 1) * 100,
+                "dxy": (dx / dx0 - 1) * 100 if dx and dx0 else None}
+    for e in ev:
+        e["yen"] = yen_at(e["t"])
+        e["ok"] = logic.yen_ok(e["dir"], e["yen"]["move"])
+    evok = [e for e in ev if e["ok"]]
 
     def roll_at(delay):
-        out = logic.rolling_backtest(h, ph, st, ev, cost=COST, delay=delay)
+        out = logic.rolling_backtest(h, ph, st, evok, cost=COST, delay=delay)
         for x in out:
             x["swap"] = logic.swap_pct(irx, x["te"], x["tx"], x["dir"])
             x["ret"] += x["swap"]
@@ -126,7 +144,7 @@ def compute(hr, d, irx, now):
     # 直近 8 日のサイン（その時刻に入った場合の手仕舞い前の取引の目安）
     end = {x + 3600: i for i, x in enumerate(h["t"])}
     active = []
-    for e in ev:
+    for e in evok:
         if not e["fresh"] or not logic.dmm_open(e["t"]) or nowts - e["t"] > 8 * 86400:
             continue
         tx = logic.exit_time(e["t"])
@@ -154,6 +172,11 @@ def compute(hr, d, irx, now):
     # 22年の検証（朝9時締めの日足）
     b = daily_bars(d, now)
     dsig, _ = logic.signals(b["C"])
+    bts = lambda i: dt.datetime.combine(b["date"][i], dt.time(), dt.timezone.utc).timestamp()
+    n = logic.YEN_N
+    dsig = [x if not x or i < n or logic.yen_ok(x, logic.yen_move(b["C"][i], b["C"][i - n], logic.asof(dxy["d"], bts(i)),
+                                                                   logic.asof(dxy["d"], bts(i - n)))) else 0
+            for i, x in enumerate(dsig)]
     lt = logic.backtest(b, dsig, cost=COST)
     for x in lt:
         x["date"] = b["date"][x["i"]].isoformat()
@@ -181,13 +204,15 @@ def compute(hr, d, irx, now):
         "atr": rp(cur["atr"]), "atrPips": round(cur["atr"] / PIP, 1),
         "sig": {"dir": sig["dir"], "t": sig["t"], "from": round(sig["from"], 1), "to": round(sig["to"], 1),
                 "price": rp(sa["c"]), "atr": rp(sa["atr"]), "atrPips": round(sa["atr"] / PIP, 1),
-                "exit": logic.exit_time(sig["t"])} if sig else None,
+                "exit": logic.exit_time(sig["t"]), "yenOk": sig["ok"],
+                "yen": {k: None if v is None else round(v, 2) for k, v in sig["yen"].items()}} if sig else None,
+        "yen": {k: None if v is None else round(v, 2) for k, v in yen_at(tlast).items()},
         "trig": {"buy": rp(tb), "sell": rp(ts)},
         "active": active,
         "swap": swap,
         "chart": {"t": s["t"][max(0, k - 89):k + 1], "c": [rp(x) for x in C[-90:]],
                   "r": [round(x, 1) for x in rs[-90:]],
-                  "ev": [{"t": e["t"], "dir": e["dir"]} for e in ev if e["fresh"] and e["t"] >= s["t"][max(0, k - 89)]]},
+                  "ev": [{"t": e["t"], "dir": e["dir"]} for e in evok if e["fresh"] and e["t"] >= s["t"][max(0, k - 89)]]},
         "ref": {"bb": round((C[k] - bb[0]) / (bb[2] - bb[0]) * 100) if bb and bb[2] > bb[0] else None,
                 "ma": (1 if s5 > s25 else -1) if s25 else None,
                 "macd": (1 if mc[0] > mc[1] else -1) if mc else None,
@@ -218,15 +243,16 @@ def main():
     if use_cache:
         now = dt.datetime.fromtimestamp(json.load(io.open(os.path.join(HERE, "research", "cache", "yahoo_h_USDJPY.json")))["t"][-1] + 1800, dt.timezone.utc)
     try:
-        hr, d, irx = load(use_cache)
-        body = compute(hr, d, irx, now)
+        hr, d, irx, dxy = load(use_cache)
+        body = compute(hr, d, irx, dxy, now)
     except Exception as e:
-        # 取れなかった時は data 枝の前回の結果（GitHub Actions が prev.json として置く）をそのまま残す
+        # 取れなかった時は止まる。data 枝の前回の結果がそのまま残る
         raise SystemExit(f"計算できなかった（前回の data.json を残す）: {e}")
     out = {"updated": now.astimezone(JST).strftime("%Y-%m-%d %H:%M"), "updatedTs": int(now.timestamp()),
            "pair": "USDJPY",
            "rule": {"rsiN": logic.RSI_N, "buyAt": logic.BUY_AT, "sellAt": logic.SELL_AT, "slAtr": logic.SL_ATR,
-                    "hold": logic.HOLD, "best": logic.ENTRY_BEST_H, "limit": logic.ENTRY_LIMIT_H, "spread": SPREAD},
+                    "hold": logic.HOLD, "best": logic.ENTRY_BEST_H, "limit": logic.ENTRY_LIMIT_H, "spread": SPREAD,
+                    "yenN": logic.YEN_N},
            **body}
     io.open(os.path.join(HERE, "data.json"), "w", encoding="utf-8").write(
         json.dumps(out, ensure_ascii=False, separators=(",", ":")))

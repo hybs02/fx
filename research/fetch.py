@@ -4,6 +4,8 @@
   yahoo_h_{PAIR}.json   60分足 OHLC（Yahoo の上限 730 日）
   ecb_{PAIR}.json       ECB の参照レート（frankfurter）
   yahoo_IRX.json        米 13 週国債の利回り（スワップの計算用）
+  yahoo_{X}.json        外の材料の日足の終値（TNX 米10年金利・FVX 米5年金利・VIX・N225 日経平均・GSPC S&P500・DXY ドル指数）
+  yahoo_h_DXY.json      ドル指数の60分足の終値（円だけの動きの判定用）
 ドル円の規則を選び直すだけなら  python research/fetch.py USDJPY
 """
 import io, json, os, sys, time, urllib.request
@@ -15,8 +17,11 @@ PAIRS = ["USDJPY", "EURJPY", "GBPJPY", "AUDJPY", "NZDJPY", "CADJPY", "CHFJPY",
          "EURUSD", "GBPUSD", "AUDUSD", "EURGBP"]
 
 
+EXT = {"TNX": "%5ETNX", "FVX": "%5EFVX", "VIX": "%5EVIX", "N225": "%5EN225", "GSPC": "%5EGSPC", "DXY": "DX-Y.NYB"}
+
+
 def ysym(p):
-    return {"USDJPY": "JPY=X", "IRX": "%5EIRX"}.get(p, p + "=X")
+    return {"USDJPY": "JPY=X", "IRX": "%5EIRX", **EXT}.get(p, p + "=X")
 
 
 def get(url):
@@ -56,6 +61,13 @@ def main():
     irx = yahoo("IRX", "1d", "max")
     io.open(os.path.join(CACHE, "yahoo_IRX.json"), "w").write(json.dumps({"t": irx["t"], "c": irx["c"]}, separators=(",", ":")))
     print("IRX", len(irx["t"]), flush=True)
+    for x in EXT:
+        d = yahoo(x, "1d", "max")
+        io.open(os.path.join(CACHE, f"yahoo_{x}.json"), "w").write(json.dumps({"t": d["t"], "c": d["c"]}, separators=(",", ":")))
+        print(x, len(d["t"]), flush=True)
+    d = yahoo("DXY", "60m", "730d")
+    io.open(os.path.join(CACHE, "yahoo_h_DXY.json"), "w").write(json.dumps({"t": d["t"], "c": d["c"]}, separators=(",", ":")))
+    print("DXY 60m", len(d["t"]), flush=True)
     for p in sys.argv[1:] or PAIRS:
         for name, fn in (("yahoo_d", lambda: yahoo(p, "1d", "max")),
                          ("yahoo_h", lambda: yahoo(p, "60m", "730d")),

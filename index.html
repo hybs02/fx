@@ -337,6 +337,12 @@ function decide(){
     if(deadline > nine + 600){ later = nine; add("wa", `早朝：5〜9時はスプレッドが大きく広がる（DMMの固定は9時〜翌5時）。${tj(nine, false)}になってから入る（締め切り ${tj(deadline, false)} に間に合う）`); }
     else add("wa", `早朝：スプレッドが広い時間だが、9時には締め切り（${tj(deadline, false)}）を過ぎる。入るならいま（広いスプレッドのぶん少し不利）`);
   }
+  const ym = S.yen;
+  if(ym && ym.move != null){
+    const fig = `この${r.yenN}日でドル円 ${sgn(ym.uj)}%・ドル指数 ${sgn(ym.dxy)}%`;
+    if(S.yenOk === false) add("ng", `ドル全体の動き：${fig}。行きすぎがドル全体の動きで起きている（戻りにくいので入らない）`);
+    else add("ok", `円だけの動き：${fig} → 円だけで ${sgn(ym.move)}%（${dir === 1 ? "円高" : "円安"}による行きすぎ）`);
+  }
   if(vetoes(alertNow(), dir)) add("ng", `介入警戒：介入が入りやすい水準。いまの『${dn}』は入らない`);
   if(mine) add("ng", "保有中：もう持っている（持つのは1つだけ）");
   const lp = lotPlan(S.atrPips * r.slAtr);
@@ -381,7 +387,7 @@ function decisionCard(){
   else if(d.kind === "LATER"){ head = `${d.dn}は ${tj(d.later, false)} に入る`; sub = "早朝はスプレッドが広いので、9時になってから下の手順で入る"; }
   else if(d.kind === "DONE"){ head = `${d.dn}で入りました`; sub = "あとは損切り（逆指値）を置いて、手仕舞いの時刻を待つだけ"; }
   else if(d.kind === "NO"){ head = `${d.dn}サインだが見送り`; sub = "理由：" + d.ng.map(t => t.split("：")[0]).join("・"); }
-  else { head = "様子見（何もしない）"; sub = `サインは年に5〜6回ほど。${r.buyAt}以下か${r.sellAt}以上に入った時だけ動きます。`; }
+  else { head = "様子見（何もしない）"; sub = `サインは年に5回ほど。${r.buyAt}以下か${r.sellAt}以上に入った時だけ動きます。`; }
   const mark = {ok:"✔", ng:"✖", wa:"△"};
   const chk = d.rows.length ? `<div class="chk">${d.rows.map(x => `<div class="${x.s}">${mark[x.s]} ${esc(x.t)}</div>`).join("")}</div>` : "";
   return {d, html: `<div class="dec ${cls}"><div class="pair"><b>USD/JPY</b>　米ドル/円　いま <b>${fx(livePrice())}</b></div>
@@ -582,7 +588,16 @@ function triggerCard(){
   return `<div class="card"><h2>サインが出る値 <small>次の1時間</small></h2>
     ${b ? `<div class="kv"><span>この値<b>以下</b>なら 買いサイン</span><b class="plus">${fx(b)}（${pct(b)}%・${pips(b)}pips）</b></div>` : `<div class="kv"><span>買いサイン</span><b>RSI が${r.buyAt}以下にいる間は出ない</b></div>`}
     ${s ? `<div class="kv"><span>この値<b>以上</b>なら 売りサイン</span><b class="minus">${fx(s)}（+${pct(s)}%・${pips(s)}pips）</b></div>` : `<div class="kv"><span>売りサイン</span><b>RSI が${r.sellAt}以上にいる間は出ない</b></div>`}
+    ${yenLine()}
     <div class="note" style="margin-top:6px;">1時間ごとに少しずつ変わります。DMMアプリの<b>レート通知</b>にこの値を入れておくと、サインが近づいた時に気づけます。</div></div>`;
+}
+// いまの円だけの動き。サインが出た時に入れるかの目安（サインが出る時までに変わることはある）
+function yenLine(){
+  const y = DATA.yen, r = DATA.rule; if(!y || y.move == null) return "";
+  const ok = d => y.move * d <= 0;
+  return `<div class="kv"><span>円だけの動き（${r.yenN}日）</span><b>${sgn(y.move)}%（ドル円 ${sgn(y.uj)}%・ドル指数 ${sgn(y.dxy)}%）</b></div>
+    <div class="note" style="margin-top:4px;">いまサインが出たら：買いは<b>${ok(1) ? "入る" : "見送り"}</b>・売りは<b>${ok(-1) ? "入る" : "見送り"}</b>。
+      ドル全体が動いて行きすぎた時は入りません。</div>`;
 }
 function activeCard(){
   const now = nowS(), S = DATA.sig;
@@ -693,6 +708,8 @@ function renderStats(){
       RSI 25/75・損切り×3（11ペアをまとめて選ぶと出てくる設定）をドル円だけで22年測ると PF1.32 で、2011〜14年と直近5年は PF0.4 の負けでした。サインも年に2〜3回しか出ません。<br><br>
       そこでドル円だけで、しきい値 20〜35・損切り×2〜4・期限3〜10日の48通りを<b>2004〜2018年だけで比べ</b>、時代ごとの一番悪い PF が最も高い設定を選びました（RSI ${r.buyAt}/${r.sellAt}・損切り×${r.slAtr}・1週間）。
       選ぶのに使っていない2019年以降でも PF1.88 で、RSI 30/70 の周りの設定（損切り×2〜4・期限3〜10日）は2019年以降すべて勝ち越しでした。<br><br>
+      ・<b>円だけの動きで絞る</b>：行きすぎがドル全体の動き（ドル指数も同じ向きに動いた）で起きた時は入らない。比べる日数（3〜10日）も2004〜2018年だけで選んだ（${r.yenN}日）。
+        22年で、絞らないと125回・PF1.79、絞ると${Lg.n}回・PF${Lg.pf}。2019年以降でも絞った方が良く、比べる日数を3〜10日のどれにしても絞った方が良かった<br>
       ・ドル円は売りが弱い（22年で 買いPF${Lg.buy.pf}・売りPF${Lg.sell.pf}）。それでも売りも勝ち越しなので両方向とも使う<br>
       ・200日線の向きで絞る・高値安値ブレイク（順張り）は、ドル円でも良くならなかった<br>
       ・スワップ（日米の金利差）は1週間では1回あたり ±0.04% ほどで、判定は変わらない</div></details>`;
@@ -724,7 +741,7 @@ function renderSettings(){
       <div class="note" id="moneyNote" style="margin-top:6px;"></div>
       <div class="note" style="margin-top:6px;">この端末の中だけに保存されます。</div></div>
     <details class="card" open><summary>📖 使い方（3ステップ）</summary><div class="note" style="color:var(--text)">
-      <b>① 気が向いた時にアプリを開く</b><br>自動で判定し直しています。ふだんは「様子見」で、何もしません。サインは年に5〜6回ほどです。
+      <b>① 気が向いた時にアプリを開く</b><br>自動で判定し直しています。ふだんは「様子見」で、何もしません。サインは年に5回ほどです。
       <img class="shot" src="guide/wait.webp" alt="様子見の画面" loading="lazy"><br>
       <b>② 「入ってOK」が出たら、その下の手順どおりに DMM で入る</b><br>サインから<b>${r.best}時間以内</b>が目安（${r.limit}時間で締め切り）。
       手順には DMM FX アプリの画面の図が付いていて、押す所に番号があります。入る → 損切り（逆指値）を置く、の順。
@@ -748,6 +765,7 @@ function renderSettings(){
       <dt>為替介入・レートチェック</dt><dd>円安が行きすぎた時に財務省が円を買ってドル円を押し下げること。レートチェックはその前触れとされる銀行への問い合わせ。不意打ちで数円動く。</dd>
       <dt>pips（ピップス）</dt><dd>値動きの単位。ドル円は0.01円（1銭）＝1pip。</dd>
       <dt>スプレッド</dt><dd>買値と売値の差（取引のコスト）。DMMのドル円は朝9時〜翌5時が${r.spread}銭固定で、早朝は広がる。成績はこれを差し引いてあります。</dd>
+      <dt>円だけの動き</dt><dd>この${r.yenN}日でドル円が動いた％から、ドル指数（ドルの強さの平均）が動いた％を引いたもの。買いは円高で下げた時（0以下）、売りは円安で上げた時（0以上）だけ入る。ドル全体が動いた時の行きすぎは戻りにくいため。</dd>
       <dt>勝率・平均損益・PF</dt><dd>PF＝勝った合計÷負けた合計。1より大きければ続けるほど有利。</dd>
       <dt>ポジション照会・約定レート</dt><dd>いま持っている取引の一覧と、実際に売買できた値段。</dd>
     </dl></details>`;

@@ -336,6 +336,32 @@ def next_hour_triggers(st, tlast, buy_at=BUY_AT, sell_at=SELL_AT, n=RSI_N):
     return buy, sell
 
 
+# ---------------- 円だけの動き（ドル指数との差） ----------------
+# RSI の行きすぎが「円だけの動き」で起きた時だけ入る。ドル全体の動き（ドル指数 DXY も同じ向きに動いた）で
+# 行きすぎた時は入らない（ドル全体の流れは続きやすく、戻りを待つ逆張りが負けやすい）。
+YEN_N = 7              # 何日前と比べるか（3〜10日の中で、設計期間の時代ごとの一番悪い PF が最も高かった）
+
+
+def asof(series, t):
+    """series = {"t": 足の始まりの時刻, "c": 終値}。時刻 t の1時間以上前に始まった足のうち最後の終値。
+    1時間足なら t までに終わった足、米国の日足なら前の日の引け（東京9時より前）になる"""
+    import bisect as _b
+    k = _b.bisect_left(series["t"], t - 3600) - 1
+    return series["c"][k] if k >= 0 and t - series["t"][k] < 5 * 86400 else None
+
+
+def yen_move(uj_now, uj_then, dx_now, dx_then):
+    """ドル円が動いた％ − ドル指数が動いた％（＝円だけの動き。＋は円安）。材料が無ければ None"""
+    if not (uj_then and dx_now and dx_then):
+        return None
+    return ((uj_now / uj_then - 1) - (dx_now / dx_then - 1)) * 100
+
+
+def yen_ok(d, ym):
+    """買いは円だけの動きが0以下（円高で下げた）、売りは0以上（円安で上げた）の時だけ入る。材料が無ければ止めない"""
+    return ym is None or ym * d <= 0
+
+
 def equity(trades):
     """資金に対する増え方と最大の落ち込み（1回のリスク＝資金の1%あたり・単利）。
     trades: {t1, R}（R＝損益÷損切り幅）。手仕舞った順に足す"""

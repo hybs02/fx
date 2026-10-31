@@ -46,7 +46,9 @@ def data_go():
     p = 152.846
     d.update(price=p, rsi=29.6, rsiPrev=31.4, live={"p": p, "t": T - 900})
     d["trig"] = {"buy": None, "sell": 158.91}
-    d["sig"] = {"dir": 1, "t": SIG_T, "from": 31.4, "to": 29.6, "price": p, "atr": ATR, "atrPips": 84.1, "exit": exit_time(SIG_T)}
+    d["sig"] = {"dir": 1, "t": SIG_T, "from": 31.4, "to": 29.6, "price": p, "atr": ATR, "atrPips": 84.1, "exit": exit_time(SIG_T),
+                "yenOk": True, "yen": {"move": -0.92, "uj": -1.63, "dxy": -0.71}}
+    d["yen"] = {"move": -0.95, "uj": -1.66, "dxy": -0.71}
     return d
 
 
