@@ -37,6 +37,20 @@ DMM FX で手で取引する前提で、入る時刻・損切りの値・数量�
 - 新規注文の「損切」を ON にしない。DMM の損切幅は 99.9pips までで、この規則の損切り（ATR×4。300pips 台）は入らない。
 - 利確（指値）は置かない。
 
+### サインの通知
+
+入ってよいサインが出たら、スマホに通知が届き、ホーム画面のアイコンに数字が付く（iPhone は iOS 16.4 以降で、ホーム画面に追加したアプリから設定する）。
+
+| 手順 | 操作 |
+| --- | --- |
+| 1 | アプリの「設定・用語」→「サインの通知」→「通知をオンにする」→ 許可 |
+| 2 | 出てきた宛先をコピーし、GitHub の Secrets「PUSH_SUBS」に入れる（2台以上なら `[ ]` で囲んでカンマで並べる） |
+| 3 | 通知の鍵を Secrets「VAPID_PRIVATE」に入れておく（一度だけ。アプリの `VAPID_PUBLIC` と対） |
+
+- 送るのは GitHub Actions の `notify.py`。円だけの動きで外れたサインと、介入警戒で止まる買いは送らない。同じサインは1回だけ（送った時刻を data.json の `notified` に残す）。
+- 届くのは自動の計算が動いた時。PC が動いていればサインから1時間以内、止まっていると数時間遅れることがある。
+- アイコンの数字は、アプリを開いた時に「入ってOK」が出ていなければ消える。
+
 ### 記録と手仕舞い
 
 <img src="guide/hold.webp" width="260" alt="記録したあとの画面">
@@ -81,6 +95,7 @@ GitHub Actions（毎時 3・23・43 分に頼む／日〜金 UTC）
       └ いまの値でサイン・損切り幅・次の1時間のサイン価格・スワップの目安・検証成績を計算して data.json を作る
           └ data.json は「data」枝に毎回上書き（force push）
               └ 画面は raw.githubusercontent.com/hybs02/fx/data/data.json を読んで表示するだけ
+      └ 新しいサインなら notify.py が登録したスマホに通知を送る（Web Push）
 ```
 
 - GitHub の定時実行は混んでいると遅れたり飛ばされたりし、実際に動くのは3〜7時間おきのことが多い。そのため PC のタスクスケジューラからも毎時5分に起動する（`tools/kick_update.vbs`）。PC が動いている間だけ効き、DMM が閉まっている土曜6時〜月曜6時は起動しない。結果は `tools/kick.log` に1行ずつ残る（gh=0 なら起動できた）。
@@ -94,6 +109,7 @@ GitHub Actions（毎時 3・23・43 分に頼む／日〜金 UTC）
 | --- | --- |
 | `index.html` | スマホ画面（data.json を表示するだけ。計算しない） |
 | `build.py` | 定時の計算。GitHub Actions が実行 |
+| `notify.py` | 新しいサインを通知する。GitHub Actions が build.py のあとに実行（Secrets の VAPID_PRIVATE・PUSH_SUBS が無ければ送らない） |
 | `logic.py` | 規則と計算の本体（build.py と research/ が共用） |
 | `data.json` | 自動で作られる結果（data 枝。main には載せない） |
 | `fundamentals.json` | 相場の状況・日米の重要発表の日程・介入警戒の水準（手で更新） |

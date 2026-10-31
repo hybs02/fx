@@ -2,7 +2,7 @@
 // ・画面（HTML）と data.json などは、毎回ネットを先に見る（更新がすぐ届くように）。
 //   つながらない時だけ、前回保存した物を出す。
 // ・アイコン等の変わらない物は保存した物を先に使う。
-const CACHE = "usdjpy-v1";
+const CACHE = "usdjpy-v2";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "apple-touch-icon.png", "icon-192.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {
@@ -20,4 +20,21 @@ self.addEventListener("fetch", e => {
     return;
   }
   e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request)));
+});
+
+// サインの通知（GitHub Actions の notify.py が送る）。通知を出し、ホーム画面のアイコンに数字を付ける
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = {body: e.data ? e.data.text() : ""}; }
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(d.title || "ドル円シグナル", {body: d.body || "", icon: "icon-192.png", tag: "usdjpy-signal", data: {url: d.url || "./"}}),
+    self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(1).catch(() => {}) : null,
+  ]));
+});
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({type: "window", includeUncontrolled: true}).then(ws => {
+    const w = ws.find(x => "focus" in x);
+    return w ? w.focus() : self.clients.openWindow(e.notification.data && e.notification.data.url || "./");
+  }));
 });

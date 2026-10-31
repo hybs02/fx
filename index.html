@@ -419,7 +419,7 @@ function renderHome(){
     if(confirm("この取引の記録を消しますか？（DMMで決済したあとに押す）")){ positions.splice(k, 1); store.set("uj_pos", positions); render(); }
   }));
   app().querySelectorAll("[data-ics]").forEach(el => el.addEventListener("click", () => downloadIcs(positions[+el.dataset.ics])));
-  bindOrder(); drawChart(); fillDmm();
+  bindOrder(); drawChart(); fillDmm(); syncBadge(d.kind);
 }
 function positionsHtml(){
   const now = nowS(), live = livePrice(), sw = DATA.swap;
@@ -796,6 +796,16 @@ function renderSettings(){
         損切りは広め（1日の値幅の${r.slAtr}倍）なので、1Lot（1万通貨）で数万円になります。足りない時は<b>ミニ ${MINI}（1Lot＝1,000通貨）</b>で計算します（ミニはスプレッドが固定されず広め）。</div>
       <div class="note" id="moneyNote" style="margin-top:6px;"></div>
       <div class="note" style="margin-top:6px;">この端末の中だけに保存されます。</div></div>
+    <div class="card"><h2>🔔 サインの通知</h2>
+      <div class="note">入ってよいサインが出たら、このスマホに通知が届き、ホーム画面のアイコンに数字が付きます。
+        届くのは自動の計算が動いた時なので、PC が動いていればサインから1時間以内、PC が止まっていると数時間遅れることがあります。</div>
+      <div class="note" id="pushState" style="margin-top:6px;"></div>
+      <div style="display:flex; gap:8px;"><button class="btn" id="pushOn">通知をオンにする</button><button class="btn ghost" id="pushTest">試しに出す</button></div>
+      <div id="pushOut" hidden>
+        <div class="note" style="margin-top:8px;">この端末の宛先です。コピーして Claude に送るか、GitHub の hybs02/fx → Settings → Secrets and variables → Actions の
+          「PUSH_SUBS」に入れてください（2台以上なら [ ] で囲んでカンマで並べる）。入れるまでは届きません。</div>
+        <textarea id="pushSub" readonly rows="4" style="width:100%; box-sizing:border-box; margin-top:6px; padding:8px; border-radius:10px; border:1px solid var(--line); background:#0c111c; color:var(--sub); font-size:11px;"></textarea>
+        <div style="display:flex; gap:8px;"><button class="btn ghost" id="pushCopy">宛先をコピー</button><button class="btn red" id="pushOff">この端末の通知をやめる</button></div></div></div>
     <details class="card"><summary>DMM の実際の画面を出す（自分の端末だけ）</summary>
       <div class="note">注文手順の図を、DMM FX アプリの実際の画面（公式マニュアルから切り出した画像）に替えます。
         画像は非公開の場所（GitHub の hybs02/fx-dmm）にあり、下に鍵を入れた端末でだけ読めます。</div>
@@ -839,6 +849,7 @@ function renderSettings(){
       <dt>勝率・平均損益・PF</dt><dd>PF＝勝った合計÷負けた合計。1より大きければ続けるほど有利。</dd>
       <dt>ポジション照会・約定レート</dt><dd>いま持っている取引の一覧と、実際に売買できた値段。</dd>
     </dl></details>`;
+  bindPush();
   $("#tokSave").addEventListener("click", async () => {
     const v = $("#tok").value.trim(), st = $("#dmmState");
     if(!v){ st.textContent = "鍵を貼ってから押してください"; st.style.color = "var(--sell)"; return; }
@@ -858,6 +869,72 @@ function renderSettings(){
   const mn = () => { const m = moneyLines(); $("#moneyNote").innerHTML = m ? `このリスクだと、過去の検証では資金が <b>${m.long}</b>（22年）でした。` : ""; };
   $("#risk").addEventListener("change", e => { riskPct = parseFloat(e.target.value) || 2; store.set("fx_risk", riskPct); mn(); });
   mn();
+}
+
+// ---------- サインの通知とアイコンの数字 ----------
+// 通知は GitHub Actions の notify.py が送る（Web Push）。ここでは通知の許可を取り、この端末の宛先を作って見せるだけ。
+// 宛先は GitHub の Secrets「PUSH_SUBS」に入れると届くようになる。VAPID_PUBLIC は notify.py の鍵（Secrets の VAPID_PRIVATE）と対
+const VAPID_PUBLIC = "BJo3Ec8hZBWbjSeb4nuaccA3eXONiEcOx_ATFhEUprequHK2nJFgphPVewkuA-0qY8Q6vePQrwRgYt6RfpQpcMY";
+const b64u = v => Uint8Array.from(atob(v.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - v.length % 4) % 4)), c => c.charCodeAt(0));
+const pushable = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const standalone = () => navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+// 入ってよいサインが出ている間はアイコンに 1、それ以外は消す（通知で付いた数字も、開いて見たらここで揃う）
+function syncBadge(kind){
+  try{
+    if(!navigator.setAppBadge) return;
+    (kind === "GO" || kind === "LATER" ? navigator.setAppBadge(1) : navigator.clearAppBadge()).catch(() => {});
+  }catch(e){}
+}
+async function pushSub(){
+  try{ const r = await navigator.serviceWorker.getRegistration(); return r ? await r.pushManager.getSubscription() : null; }catch(e){ return null; }
+}
+async function pushShow(){
+  const st = $("#pushState"), out = $("#pushOut"); if(!st) return;
+  const set = (t, c) => { st.innerHTML = t; st.style.color = c; };
+  out.hidden = true;
+  if(!pushable()){
+    set(/iPhone|iPad/.test(navigator.userAgent) && !standalone()
+      ? "ホーム画面のアイコンから開くと設定できます（Safari のままでは通知を受け取れません。iOS 16.4 以降）"
+      : "この端末・ブラウザは通知に対応していません", "var(--sub)");
+    return;
+  }
+  if(Notification.permission === "denied"){ set("通知が拒否されています。端末の設定 → 通知 →「ドル円シグナル」をオンにしてから押し直してください", "var(--sell)"); return; }
+  const sub = await pushSub();
+  if(!sub){ set("まだオフです", "var(--sub)"); return; }
+  set("この端末はオン。下の宛先が GitHub に入っていれば、サインが出た時に届きます", "var(--buy)");
+  $("#pushSub").value = JSON.stringify(sub); out.hidden = false;
+}
+function bindPush(){
+  $("#pushOn").addEventListener("click", async () => {
+    if(!pushable()) return pushShow();
+    try{
+      if(await Notification.requestPermission() !== "granted") return pushShow();
+      const reg = await navigator.serviceWorker.ready;
+      if(!(await reg.pushManager.getSubscription()))
+        await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64u(VAPID_PUBLIC)});
+    }catch(e){ $("#pushState").textContent = "オンにできませんでした（" + e.message + "）"; $("#pushState").style.color = "var(--sell)"; return; }
+    pushShow();
+  });
+  $("#pushCopy").addEventListener("click", async () => {
+    const t = $("#pushSub");
+    try{ await navigator.clipboard.writeText(t.value); toast("宛先をコピーしました"); }
+    catch(e){ t.focus(); t.select(); toast("選んだので、長押しでコピーしてください"); }
+  });
+  $("#pushTest").addEventListener("click", async () => {
+    try{
+      if(await Notification.requestPermission() !== "granted") return pushShow();
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification("ドル円 買いサイン（試し）", {body:"サインが出ると、このように届きます", icon:"icon-192.png", tag:"usdjpy-test"});
+      if(navigator.setAppBadge) navigator.setAppBadge(1).catch(() => {});
+      toast("試しの通知を出しました（アイコンの数字は「いま」タブを開くと消えます）");
+    }catch(e){ toast("出せませんでした（" + esc(e.message) + "）"); }
+  });
+  $("#pushOff").addEventListener("click", async () => {
+    const sub = await pushSub(); if(sub) await sub.unsubscribe().catch(() => {});
+    if(navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+    pushShow();
+  });
+  pushShow();
 }
 
 // ---------- カレンダー（手仕舞いの時刻の通知） ----------
