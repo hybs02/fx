@@ -8,6 +8,7 @@
 
 使い方:  python notify.py [前回の data.json]   （無ければ prev.json）
          python notify.py --dry-run            （送らずに、送る内容だけ出す）
+         python notify.py --test               （サインに関係なく試しの通知を送る。data.json は書き換えない）
 """
 import datetime as dt, io, json, os, sys
 
@@ -65,6 +66,15 @@ def send(subs, key, title, body):
 
 def main():
     dry = "--dry-run" in sys.argv
+    if "--test" in sys.argv:
+        key, subs = os.environ.get("VAPID_PRIVATE", "").strip(), os.environ.get("PUSH_SUBS", "").strip()
+        if not key or not subs:
+            raise SystemExit("通知の鍵か宛先が無い（GitHub の Secrets：VAPID_PRIVATE・PUSH_SUBS）")
+        subs = json.loads(subs)
+        subs = subs if isinstance(subs, list) else [subs]
+        n = send(subs, key, "ドル円シグナル（試し）", "GitHub の自動計算から送った試しの通知です")
+        print(f"試しの通知を送った（{n}/{len(subs)} 台）")
+        return
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     d = read(os.path.join(HERE, "data.json"))
     prev = read(args[0] if args else os.path.join(HERE, "prev.json")) or {}

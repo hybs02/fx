@@ -11,6 +11,11 @@ on:
   schedule:
     - cron: "3,23,43 * * * 0-5"
   workflow_dispatch:
+    inputs:
+      test_push:
+        description: "試しの通知を送る（サインに関係なく）"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -47,6 +52,7 @@ jobs:
         run: |
           pip install -q pywebpush || true
           python notify.py prev.json || echo "通知の処理に失敗（計算はそのまま残す）"
+          if [ "${{ inputs.test_push }}" = "true" ]; then python notify.py --test; fi
 
       - name: data 枝に上書きする
         run: |
